@@ -1,0 +1,12 @@
+---
+description: Respect user-owned product testing and avoid unsolicited browser/screenshot validation
+alwaysApply: true
+---
+
+# Validation Ownership
+
+- If the user says they will test the product, do not run browser automation, take screenshots, or perform visual QA unless they explicitly ask.
+- For backend readiness questions, validate through code review, schema/data inspection, logs, build/type checks, and targeted API or database commands.
+- When UI testing could be useful, state what the user should verify manually instead of launching browser tools.
+- Keep status updates focused on what was verified, what remains uncertain, and the next concrete backend/product steps.
+- Do not treat screenshots as proof that backend changes are correct; verify backend behavior from the pipeline, database rows, and function responses.
