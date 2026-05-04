@@ -39,7 +39,7 @@ cp .env.example web/.env.local       # web app
 
 # 5. Edge Functions
 supabase link --project-ref <your-project-ref>
-for fn in rss-ingest backfill-history classify-articles route-articles \
+for fn in rss-ingest classify-articles route-articles \
           synthesize-stories generate-daily-brief generate-competitor-summary \
           run-pipeline; do
   supabase functions deploy $fn --no-verify-jwt
@@ -87,7 +87,7 @@ curl -X POST "https://<project-ref>.supabase.co/functions/v1/run-pipeline" \
 
 ### Database
 
-Schema lives in `supabase/schema.sql`. Migrations (additive only) live in `supabase/migrations/`. Run them via the Supabase SQL editor or `supabase db push`.
+Schema lives in `supabase/schema.sql`. Run it via the Supabase SQL editor or `supabase db push`. Schema changes are additive — see "Conventions" below.
 
 ---
 
@@ -95,7 +95,7 @@ Schema lives in `supabase/schema.sql`. Migrations (additive only) live in `supab
 
 - **Stateless functions.** Each Edge Function in `supabase/functions/` does one thing and is independently triggerable. State lives in `pipeline_state`.
 - **Watermark-driven.** Each stage advances `pipeline_state.<stage>.last_processed_at` after a successful batch. Re-runs are safe.
-- **Schema is additive.** Never `DROP COLUMN`. New columns get a migration in `supabase/migrations/` named `YYYY_MM_DD_<change>.sql`.
+- **Schema is additive.** Never `DROP COLUMN`. Add new columns directly in `supabase/schema.sql` (it is idempotent). Re-run `schema.sql` against the live DB after editing.
 - **All LLM prompts live next to their function.** Update [`docs/prompts.md`](./docs/prompts.md) whenever you change one.
 - **All design decisions get logged.** If you change something architectural, add (or amend) an entry in [`docs/decisions.md`](./docs/decisions.md).
 - **No secrets in code or commits.** Secrets go in `.env.local` and `supabase/.env`, both gitignored.
@@ -107,10 +107,9 @@ Schema lives in `supabase/schema.sql`. Migrations (additive only) live in `supab
 See [`README.md`](./README.md#repository-layout) for the full layout. Quick reference:
 
 - `web/` — Next.js 14 frontend.
-- `supabase/functions/` — 8 Edge Functions (Deno + TypeScript).
+- `supabase/functions/` — 7 Edge Functions (Deno + TypeScript).
 - `supabase/schema.sql` / `supabase/seed.sql` / `supabase/cron.sql` — DB setup.
 - `docs/` — product, architecture, pipeline, data-model, prompts, operations, decisions.
-- `scripts/` — one-off Node scripts for admin tasks.
 
 ---
 

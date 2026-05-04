@@ -16,12 +16,11 @@ see [`data-model.md`](./data-model.md).
 | 2 | `classify-articles` | 392 | cron 2h | Per-article LLM classify (bucket + importance + entities + implication) |
 | 3 | `route-articles` | 398 | cron 2h | Embed + cluster (pgvector top-K + LLM judge) |
 | 4 | `synthesize-stories` | 437 | cron 2h | Per-cluster LLM synthesis → row in `stories` |
-| 5 | `generate-daily-brief` | 328 | cron daily 00:30 UTC | Rank, window-decide, cache `daily_briefs` row |
-| 6 | `generate-competitor-summary` | 440 | cron daily 23:30 UTC | Per-competitor week + quarter themed rollups |
+| 5 | `generate-daily-brief` | 328 | cron daily 00:35 UTC | Rank, window-decide, cache `daily_briefs` row |
+| 6 | `generate-competitor-summary` | 440 | cron daily 00:45 UTC | Per-competitor week + quarter themed rollups |
 | 7 | `run-pipeline` | 167 | cron 2h | Orchestrator that chains stages 1-4 |
-| 8 | `backfill-history` | 276 | one-shot manual | 90-day Google News date-range backfill |
 
-Total: **~2,684 LOC.**
+Total: **~2,408 LOC across 7 functions.**
 
 ---
 
@@ -50,8 +49,9 @@ every 2 hours).
 5. For each parsed item, checks if URL already exists → skip if yes.
 6. Inserts new article with `published_at` from feed (best effort
    parse), `fetched_at = now()`.
-7. RSS ingest is live/current only. Historical depth comes from
-   `backfill-history` (90 days, 14-day Google News windows).
+7. RSS ingest is live/current only. The first ~30 days of history accumulate
+   organically from the live RSS feeds; the brief calls out a "filling in"
+   state on quarterly views until enough depth exists.
 
 **Failure modes:**
 - 503 from a source → retried, then logged in `sources.last_status`,
@@ -195,14 +195,11 @@ clusters never mix competitors.
 
 ## 5. `generate-daily-brief`
 
-**Triggered by:** `pg_cron` daily at 00:30 UTC (06:00 IST).
+**Triggered by:** `pg_cron` daily at 00:35 UTC (06:05 IST), after the 05:30 IST ingest run has a short buffer to finish.
 
 **Reads:**
 - Market/competitor stories from the last 24/48/72h.
 - Cars24 stories from the last 14d.
-- Google News backfill rows are allowed because the backfill now uses
-  event-oriented queries and original article `published_at`; recency windows
-  still prevent stale rows from entering the brief.
 - All prior `daily_briefs.hero_stories` (to know what was previously shown).
 - All clusters of previously-shown stories (to detect new activity).
 
@@ -261,11 +258,6 @@ clusters never mix competitors.
 }
 ```
 
-**Why allow backfill sources?** After tightening the historical queries to
-event-oriented verbs, backfill provides the highest-signal competitor coverage.
-The article's original `published_at` drives recency, so stale rows don't enter
-the daily/weekly windows unless the underlying article is actually recent.
-
 **Files:**
 - `supabase/functions/generate-daily-brief/index.ts`
 
@@ -273,7 +265,7 @@ the daily/weekly windows unless the underlying article is actually recent.
 
 ## 6. `generate-competitor-summary`
 
-**Triggered by:** `pg_cron` daily at 23:30 UTC (05:00 IST next day).
+**Triggered by:** `pg_cron` daily at 00:45 UTC (06:15 IST), using the same fresh morning dataset as the daily brief.
 
 **Reads:**
 - `stories` filtered by `primary_competitor = <competitor>` (e.g.
@@ -283,7 +275,7 @@ the daily/weekly windows unless the underlying article is actually recent.
 **Logic per (competitor, scope) pair:**
 
 ### Weekly (`scope='week'`)
-1. Load stories from last 7 days, including event-oriented backfill rows.
+1. Load stories from last 7 days.
 2. Group themes via LLM (e.g. *Funding & investor activity*, *Product
    moves*, *Leadership*) — per-cluster bullets, each linkable to
    source articles.
@@ -294,16 +286,14 @@ the daily/weekly windows unless the underlying article is actually recent.
 ### Quarterly (`scope='quarter'`) — Day-One Depth strategy
 1. Try to load last 12 weekly summaries (a "rollup of rollups").
 2. **If fewer than 4 weekly summaries exist** → fall back to raw
-   90-day stories (including backfill sources) so the quarterly view
-   has real depth on day one.
+   90-day stories so the quarterly view shows whatever depth exists.
 3. LLM-synthesize themes from whichever input set we ended up with.
 4. `story_count` reflects underlying story count (not weekly count).
 5. Upsert into `competitor_summaries`.
 
 **Why two paths?** On day one, we don't have 12 weeks of weekly
-rollups. The fallback to raw 90-day stories (with backfill) is the
-honest day-one depth strategy. As real weeks accumulate, the rollup
-path takes over.
+rollups. The fallback to raw 90-day stories is the honest day-one
+strategy; as real weeks accumulate, the rollup path takes over.
 
 **Files:**
 - `supabase/functions/generate-competitor-summary/index.ts`
@@ -336,45 +326,6 @@ on first failure. Default false (continue and report errors).
 
 **Files:**
 - `supabase/functions/run-pipeline/index.ts`
-
----
-
-## 8. `backfill-history`
-
-**Triggered by:** Manual one-shot (Python orchestration script).
-
-**Why separate from `rss-ingest`:** Backfill needs Google News
-date-range queries (`when:<start>:<end>`), which are heavier and
-distinct enough to warrant their own function. Also: idempotent
-markers (`Google News Backfill: <query>` source name) so the daily
-brief can filter them out.
-
-**Inputs:**
-```json
-{
-  "query": "Spinny",
-  "weeks_back": 12,        // 90 days
-  "slice_days": 14,        // 2-week slices
-  "max_per_period": 8      // cap per slice to avoid 503s
-}
-```
-
-**Logic:**
-1. For each 2-week slice in the last 12 weeks:
-   - Build a Google News RSS URL with `after:<start> before:<end>`.
-   - Fetch with retry/backoff.
-   - Parse, dedup by URL, insert articles with
-     `source_name = "Google News Backfill: " + query`,
-     `source_id = null`.
-2. Articles flow through normal pipeline on next cron tick.
-
-**Resource limits:** Supabase Edge has a `WORKER_RESOURCE_LIMIT`. We
-hit this when running multiple queries in one invocation. The
-orchestration script now runs **one query per invocation** to stay
-within limits.
-
-**Files:**
-- `supabase/functions/backfill-history/index.ts`
 
 ---
 

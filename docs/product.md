@@ -104,15 +104,15 @@ For each cluster (= group of articles about one event), GPT-4o reads all the mem
 Source articles are kept, attributed, and linked.
 
 ### Step 5 — **Generate the daily brief**
-Once a day at 06:00 IST, we pick stories by importance + recency, decide the time window (24/48/72h based on volume), and cache the result. Every page load reads from this cached row.
+Once a day at 06:05 IST, after the 05:30 IST ingest has time to finish, we pick stories by importance + recency, decide the time window (24/48/72h based on volume), and cache the result. Every page load reads from this cached row.
 
 ### Step 6 — **Generate competitor summaries**
-At 05:00 IST, for each competitor we generate:
+At 06:15 IST, using the same fresh morning dataset, for each competitor we generate:
 - A weekly themed summary (the underlying stories are linked).
 - A quarterly themed summary (or a "filling in" message if shallow).
 
-### Plus: one-shot historical backfill
-A one-shot job pulls 90 days of history from Google News (date-range queries per competitor) so the quarterly view has real depth on day one. This runs once; future quarters fill in organically as the live ingest collects.
+### A note on quarterly depth
+Quarterly competitor depth is built up organically from the live RSS feeds. Until ~30+ days of history exist, the quarterly view shows an honest "filling in" message rather than padding with weak data.
 
 ---
 
@@ -148,7 +148,7 @@ The product is mostly the iceberg under the waterline. The 1-page brief is what 
 
 ## 7. Future work
 
-- **Email digest** at 06:00 IST for leadership members who don't open the URL.
+- **Email digest** after the 06:05 IST brief refresh for leadership members who don't open the URL.
 - **Slack integration** (`/cars24-brief` slash command).
 - **Personalized lenses** (COO sees ops-tilted, CFO sees finance/funding-tilted).
 - **Source expansion** to 25–30 sources, including international used-car coverage (Carvana, Cazoo, AutoTrader UK) for benchmark signal.

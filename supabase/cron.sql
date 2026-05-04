@@ -2,7 +2,7 @@
 -- Cars24 Brief — pg_cron Schedules
 -- ============================================================================
 -- Run AFTER deploying Edge Functions and AFTER setting these values in your
--- Supabase project's Vault (Settings → Vault → New Secret):
+-- Supabase project's Vault (Settings -> Vault -> New Secret):
 --
 --   project_url           = https://<your-project-ref>.supabase.co
 --   backend_api_key       = <your sb_secret_... key>
@@ -12,6 +12,21 @@
 
 -- Helper: read a value from the Vault
 -- (Supabase exposes vault.decrypted_secrets as a view of decrypted Vault secrets.)
+--
+-- Re-running this file is safe: existing schedules with the same names are
+-- removed before being recreated.
+
+select cron.unschedule('cars24-rss-ingest')
+where exists (select 1 from cron.job where jobname = 'cars24-rss-ingest');
+
+select cron.unschedule('cars24-daily-brief')
+where exists (select 1 from cron.job where jobname = 'cars24-daily-brief');
+
+select cron.unschedule('cars24-archive-clusters')
+where exists (select 1 from cron.job where jobname = 'cars24-archive-clusters');
+
+select cron.unschedule('cars24-competitor-summary')
+where exists (select 1 from cron.job where jobname = 'cars24-competitor-summary');
 
 -- ---------------------------------------------------------------------------
 -- 1. RSS ingest — every 2 hours
@@ -33,12 +48,12 @@ select cron.schedule(
 );
 
 -- ---------------------------------------------------------------------------
--- 2. Daily brief generation — 06:00 IST = 00:30 UTC
+-- 2. Daily brief generation — 06:05 IST = 00:35 UTC
 -- ---------------------------------------------------------------------------
 
 select cron.schedule(
   'cars24-daily-brief',
-  '30 0 * * *',                                   -- 00:30 UTC = 06:00 IST
+  '35 0 * * *',                                   -- 00:35 UTC = 06:05 IST
   $$
     select net.http_post(
       url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/generate-daily-brief',
@@ -66,12 +81,12 @@ select cron.schedule(
 );
 
 -- ---------------------------------------------------------------------------
--- 4. Per-competitor weekly + quarterly summaries — daily at 05:00 IST = 23:30 UTC prev day
+-- 4. Per-competitor weekly + quarterly summaries — daily at 06:15 IST = 00:45 UTC
 -- ---------------------------------------------------------------------------
 
 select cron.schedule(
   'cars24-competitor-summary',
-  '30 23 * * *',                                  -- 23:30 UTC = 05:00 IST next day
+  '45 0 * * *',                                   -- 00:45 UTC = 06:15 IST
   $$
     select net.http_post(
       url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/generate-competitor-summary',

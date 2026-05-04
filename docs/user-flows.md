@@ -89,11 +89,12 @@ Triggered automatically by `pg_cron` every 2 hours.
 
 ### Once-a-day jobs
 
-- **00:30 UTC (06:00 IST)** — `pg_cron` calls `generate-daily-brief`,
-  which builds the cached daily brief row that the website reads.
-- **23:30 UTC (05:00 IST next day)** — `pg_cron` calls
+- **00:35 UTC (06:05 IST)** — `pg_cron` calls `generate-daily-brief`,
+  which builds the cached daily brief row after the 05:30 IST ingest
+  has a short buffer to finish.
+- **00:45 UTC (06:15 IST)** — `pg_cron` calls
   `generate-competitor-summary` for each competitor + scope (week /
-  quarter), caching the rows the expandable rows read from.
+  quarter), caching rows from the same fresh morning dataset.
 
 ---
 
@@ -116,27 +117,7 @@ deployed a new prompt — re-run classify."
 
 ---
 
-## Flow 4 — Operator backfills 90 days of history (one-shot)
-
-Used once at first launch to seed the quarterly competitor view with
-real depth.
-
-1. From local: a Python orchestration script iterates over a list of
-   queries (one per competitor + a few topic queries).
-2. For each query, it calls `/functions/v1/backfill-history` with
-   `{"query": "...", "weeks_back": 12, "slice_days": 14, "max_per_period": 8}`.
-3. The Edge Function issues date-range Google News RSS calls for each
-   2-week slice and inserts deduped articles with
-   `source_name = "Google News Backfill: <query>"`.
-4. Articles flow through the normal pipeline (classify → route →
-   synthesize) on the next cron tick.
-5. The frontend filters out `Google News Backfill: %` sources from
-   daily/weekly views (so backfill only shows in the quarterly), so
-   stale-dated articles can't leak into "today."
-
----
-
-## Flow 5 — A new source needs to be added
+## Flow 4 — A new source needs to be added
 
 Worst case in the lifecycle, but cleanly defined.
 
@@ -152,7 +133,7 @@ Worst case in the lifecycle, but cleanly defined.
 
 ---
 
-## Flow 6 — A failure happens (degraded mode)
+## Flow 5 — A failure happens (degraded mode)
 
 What the user sees vs what the operator sees.
 

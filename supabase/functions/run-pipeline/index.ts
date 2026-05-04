@@ -20,7 +20,6 @@ import {
 
 type Stage =
   | "ingest"
-  | "backfill"
   | "classify"
   | "embed"
   | "route"
@@ -30,7 +29,6 @@ type Stage =
 
 const STAGE_TO_FUNCTION: Record<Stage, string> = {
   ingest: "rss-ingest",
-  backfill: "backfill-history",
   classify: "classify-articles",
   embed: "route-articles", // embed + route happen in the same function
   route: "route-articles",

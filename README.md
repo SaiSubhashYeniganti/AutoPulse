@@ -57,7 +57,7 @@ cp .env.example .env.local                   # at repo root, also web/.env.local
 
 # 4. Deploy Edge Functions
 supabase link --project-ref <your-project-ref>
-for fn in rss-ingest backfill-history classify-articles route-articles \
+for fn in rss-ingest classify-articles route-articles \
           synthesize-stories generate-daily-brief generate-competitor-summary \
           run-pipeline; do
   supabase functions deploy $fn --no-verify-jwt
@@ -100,11 +100,9 @@ Full instructions: [`docs/deployment.md`](./docs/deployment.md).
 │   ├── schema.sql                       ← all tables, indexes, pgvector
 │   ├── seed.sql                         ← 10+ sources + initial pipeline state
 │   ├── cron.sql                         ← pg_cron schedules
-│   ├── migrations/
 │   └── functions/
 │       ├── _shared/                     ← supabase, openai, rss, vector helpers
 │       ├── rss-ingest/
-│       ├── backfill-history/
 │       ├── classify-articles/
 │       ├── route-articles/
 │       ├── synthesize-stories/
@@ -118,7 +116,6 @@ Full instructions: [`docs/deployment.md`](./docs/deployment.md).
 │   ├── lib/
 │   └── package.json
 │
-├── scripts/                             ← one-off node scripts
 └── design/                              ← visual guidelines + image prompts
 ```
 
@@ -135,7 +132,7 @@ Full instructions: [`docs/deployment.md`](./docs/deployment.md).
 | Scheduling | `pg_cron` inside Supabase |
 | Hosting  | Vercel (frontend), Supabase (backend) |
 
-Total Edge Function code: **~2,700 LOC across 8 functions.**
+Total Edge Function code: **~2,400 LOC across 7 functions.**
 
 ---
 

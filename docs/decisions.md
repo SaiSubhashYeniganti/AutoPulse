@@ -60,9 +60,9 @@ Format: **Decision → Why → What we gave up.**
 - **Why:** Initially shipped with `revalidate = 300` ISR but the build-time prerender served an empty homepage. SSR (`force-dynamic`) fixed it and is fast enough — the page makes 3 cheap Supabase reads.
 - **Trade-off:** Each page load hits the DB. At our traffic this is irrelevant.
 
-### 11. Google News backfill as a one-shot, not continuous
-- **Why:** We need 90-day historical depth to make day-one quarterly competitor summaries credible. But Google News date-range queries hammer the same IPs and risk 503s if we run them on cron.
-- **Trade-off:** No ongoing historical refresh. Day-one quarterly is built once; future quarters fill in organically as `rss-ingest` collects.
+### 11. No historical backfill — quarterly fills in organically
+- **Why:** Google News date-range queries are heavy and prone to 503s, so we don't keep a backfill function in the live system. The competitor quarterly view shows an honest "filling in" state until ~30+ days of live RSS history accumulate.
+- **Trade-off:** Day-one quarterly view looks shallow until live ingest catches up. Acceptable, and consistent with the product's honest-empty-states principle.
 
 ---
 
@@ -80,11 +80,7 @@ Format: **Decision → Why → What we gave up.**
 - **Why:** Forcing the model to write an implication for every story produced low-quality boilerplate (*"This is relevant to Cars24's positioning"*). Letting it return null when honest gives the remaining implications signal.
 - **Trade-off:** Some stories show without an implication line. We surface them with the bucket tag instead so the user still gets context.
 
-### 15. Allow `Google News Backfill: %` sources in daily/weekly views after query tightening
-- **Why:** We tightened historical Google News queries to event-oriented competitor verbs (`funding`, `IPO`, `acquires`, `steps down`, `revenue`, etc.). Backfill rows preserve the original article `published_at`, so a story only appears in a 7d/14d view if the article is genuinely recent.
-- **Trade-off:** The daily brief can now include Google News-sourced historical rows. This is acceptable because recency + importance + Cars24 implication are the real filters, and excluding backfill hid legitimate recent events like Spinny IPO planning and Cars24 founder exits.
-
-### 16. Hero is strictly never-shown-before; *Still Developing* carries the rest
+### 15. Hero is strictly never-shown-before; *Still Developing* carries the rest
 - **Why:** Even with perfect clustering, an important story can rank #1 day after day if the model just keeps scoring it highest. That feels broken — the reader opens the brief and sees yesterday's headline. The fix: hero is built from the pool of stories that have NEVER appeared in any prior brief. Stories that *were* in a prior brief AND have new article activity since their last appearance go into a *Still Developing* strip below the hero — one compact line per story showing source count, days running, and time of last update.
 - **Trade-off:** Strict no-escape-hatch. Even if a HUGE new fact drops on a story shown 2 days ago (e.g. SEBI launches a probe), it cannot re-promote to hero — it just gets a *Still Developing* line with the new update. Cleaner UX, no scoring judgment calls. If we later want a "promote-back" override, we can add a manual flag.
 

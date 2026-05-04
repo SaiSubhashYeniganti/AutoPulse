@@ -63,11 +63,10 @@ From the repo root:
 # Get your project ref from Supabase dashboard URL
 supabase link --project-ref <your-project-ref>
 
-# Deploy all 8 functions.
+# Deploy all 7 functions.
 # New Supabase sb_publishable_/sb_secret_ keys require --no-verify-jwt.
 # The functions implement their own apikey-header check.
 supabase functions deploy rss-ingest --no-verify-jwt
-supabase functions deploy backfill-history --no-verify-jwt
 supabase functions deploy classify-articles --no-verify-jwt
 supabase functions deploy route-articles --no-verify-jwt
 supabase functions deploy synthesize-stories --no-verify-jwt
@@ -79,7 +78,7 @@ supabase functions deploy run-pipeline --no-verify-jwt
 Or in one shot:
 
 ```bash
-for fn in rss-ingest backfill-history classify-articles route-articles synthesize-stories \
+for fn in rss-ingest classify-articles route-articles synthesize-stories \
           generate-daily-brief generate-competitor-summary run-pipeline; do
   supabase functions deploy $fn --no-verify-jwt
 done
@@ -177,7 +176,7 @@ Verify schedules are live:
 
 ```sql
 select jobname, schedule, command from cron.job;
--- Expect 3 rows: cars24-rss-ingest, cars24-daily-brief, cars24-competitor-summary
+-- Expect 4 rows: cars24-rss-ingest, cars24-archive-clusters, cars24-daily-brief, cars24-competitor-summary
 ```
 
 ---

@@ -14,7 +14,7 @@ state.
 |---|---|
 | Database + Edge Functions | Supabase project (URL configured via `NEXT_PUBLIC_SUPABASE_URL`) |
 | Frontend (Next.js) | Vercel |
-| Cron schedules | `pg_cron` in the same Supabase project (3 jobs — see below) |
+| Cron schedules | `pg_cron` in the same Supabase project (4 jobs — see below) |
 | OpenAI account | Configured via `OPENAI_API_KEY` |
 
 ---
@@ -30,7 +30,7 @@ state.
 | `SUPABASE_URL` | Auto-injected by Supabase. |
 | `CLASSIFY_BATCH_SIZE` | Optional. Default 30. |
 | `CLASSIFY_CONCURRENCY` | Optional. Default 5. |
-| `BACKFILL_HOURS` | First-run RSS backfill window. Default 720 (30d). |
+| `BACKFILL_HOURS` | First-run RSS catch-up window for `rss-ingest`. Default 720 (30d). |
 
 ### Vercel (Project → Settings → Environment Variables)
 
@@ -56,9 +56,10 @@ All times in UTC. IST = UTC+5:30.
 
 | Job name | Schedule | What it does |
 |---|---|---|
-| `cars24-rss-ingest` | `0 */2 * * *` (every 2h on the hour) | Calls `run-pipeline` with `["ingest","classify","route","synthesize"]` |
-| `cars24-daily-brief` | `30 0 * * *` (00:30 UTC = 06:00 IST) | Calls `generate-daily-brief` |
-| `cars24-competitor-summary` | `30 23 * * *` (23:30 UTC = 05:00 IST next day) | Calls `generate-competitor-summary` for all competitors + scopes |
+| `cars24-rss-ingest` | `0 */2 * * *` (every 2h on the hour; 05:30 IST is the morning run) | Calls `run-pipeline` with `["ingest","classify","route","synthesize"]` |
+| `cars24-archive-clusters` | `30 22 * * *` (22:30 UTC = 04:00 IST next day) | Archives clusters older than 14 days |
+| `cars24-daily-brief` | `35 0 * * *` (00:35 UTC = 06:05 IST) | Calls `generate-daily-brief` after the 05:30 IST ingest has time to finish |
+| `cars24-competitor-summary` | `45 0 * * *` (00:45 UTC = 06:15 IST) | Calls `generate-competitor-summary` for all competitors + scopes on the same morning dataset |
 
 Inspect:
 
@@ -89,7 +90,7 @@ psql ... -f supabase/seed.sql
 # 3. Edge Functions (each deployed separately)
 for fn in rss-ingest classify-articles route-articles \
           synthesize-stories generate-daily-brief \
-          generate-competitor-summary run-pipeline backfill-history; do
+          generate-competitor-summary run-pipeline; do
   supabase functions deploy $fn --no-verify-jwt
 done
 
@@ -123,11 +124,6 @@ curl -X POST "$SUPABASE_URL/functions/v1/classify-articles" \
 # Daily brief (force regenerate)
 curl -X POST "$SUPABASE_URL/functions/v1/generate-daily-brief" \
   -H "apikey: $BACKEND_API_KEY"
-
-# Backfill (one-shot, one query at a time)
-curl -X POST "$SUPABASE_URL/functions/v1/backfill-history" \
-  -H "apikey: $BACKEND_API_KEY" \
-  -d '{"query":"Spinny","weeks_back":12,"slice_days":14,"max_per_period":8}'
 ```
 
 ---
@@ -169,7 +165,7 @@ for transparency in the UI footer.
 | Table | Row count | Notes |
 |---|---:|---|
 | `sources` | 11 | 3 trade-press + 8 Google News |
-| `articles` (total) | varies | After 90-day Google News backfill + live RSS; competitor queries are event-oriented, so review noise is lower |
+| `articles` (total) | varies | Live RSS only; competitor queries are event-oriented, so review noise is lower |
 | `articles` (last 24h) | ~40-50 | Typical day |
 | `articles` (DROP) | ~40% | Healthy noise filter rate |
 | `clusters` | ~150-200 | Some are single-article (cluster-of-one) |
@@ -240,13 +236,13 @@ These are open and would be addressed if this became a real product.
    slightly drifty in big clusters. At our cluster sizes (<20)
    irrelevant; at 100+ would matter.
 
-5. **No cluster archival.** `clusters.is_archived` exists but we don't
-   set it. After ~90 days the candidate-cluster ANN search is doing
-   useless work on stale clusters. Add a daily archive job.
+5. **No admin controls for archival.** Stale clusters are archived by
+   cron, but there is no dashboard for reviewing or manually reopening
+   archived clusters.
 
-6. **Backfill is one-shot.** Future quarterly depth fills in
-   organically; if we wanted continuous quarterly refresh, we'd need
-   a weekly backfill job (with rate-limit care).
+6. **No historical backfill.** Quarterly depth accumulates organically
+   from live RSS. The competitor quarterly view shows an honest
+   "filling in" state until ~30+ days of history exist.
 
 ---
 

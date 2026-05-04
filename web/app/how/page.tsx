@@ -33,7 +33,7 @@ export default function HowPage() {
 
           <p className="mt-8 text-[16px]">
             The pipeline runs end-to-end every 2 hours via Supabase pg_cron. The brief is regenerated and
-            cached as a single row in <code className="font-mono text-[14px] bg-apple-200 text-apple-800 px-1.5 py-0.5 rounded">daily_briefs</code> at 06:00 IST daily. The website reads
+            cached as a single row in <code className="font-mono text-[14px] bg-apple-200 text-apple-800 px-1.5 py-0.5 rounded">daily_briefs</code> at 06:05 IST daily. The website reads
             from that row, so a page load is a single Postgres lookup.
           </p>
         </Section>
@@ -131,9 +131,9 @@ export default function HowPage() {
             <tbody>
               <Row label="Frontend"   value="Next.js 14 (App Router) on Vercel · React Server Components · Tailwind · TypeScript" />
               <Row label="Database"   value="Supabase Postgres + pgvector (1536-dim cosine, ivfflat index)" />
-              <Row label="Backend"    value="Supabase Edge Functions (Deno + TypeScript) · 8 functions · ~2,700 LOC" />
+              <Row label="Backend"    value="Supabase Edge Functions (Deno + TypeScript) · 7 functions · ~2,400 LOC" />
               <Row label="LLM"        value="gpt-4o for classification, routing, synthesis · gpt-4o-mini for pulse context lines · text-embedding-3-small" />
-              <Row label="Scheduling" value="pg_cron inside Supabase (every 2h pipeline run + daily 06:00 IST brief)" />
+              <Row label="Scheduling" value="pg_cron inside Supabase (every 2h pipeline run + 06:05 IST brief)" />
             </tbody>
           </table>
         </Section>

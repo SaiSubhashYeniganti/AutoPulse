@@ -21,7 +21,7 @@ System overview for Cars24 Brief.
 | Scheduler | `pg_cron` (Supabase-hosted) | No external scheduler. Cron rows live in the same DB. |
 | LLMs | OpenAI: GPT-4o (judgment), `text-embedding-3-small` (vectors) | GPT-4o-mini was tested and rejected — see [`decisions.md`](./decisions.md) §12 |
 
-Total LOC of Edge Functions: **~2,684** across 8 functions.
+Total LOC of Edge Functions: **~2,408** across 7 functions.
 
 ---
 
@@ -69,8 +69,8 @@ Total LOC of Edge Functions: **~2,684** across 8 functions.
                     └────────────────────┬───────────────────────────┘
                                          ▼
                     ┌────────────────────────────────────────────────┐
-                    │  generate-daily-brief         (every day 00:30 │
-                    │  generate-competitor-summary   UTC / 23:30 UTC) │
+                    │  generate-daily-brief         (every day 00:35 │
+                    │  generate-competitor-summary   UTC / 00:45 UTC) │
                     │  - rank, window-decide (24/48/72h)             │
                     │  - cache to daily_briefs / competitor_summaries│
                     └────────────────────┬───────────────────────────┘
