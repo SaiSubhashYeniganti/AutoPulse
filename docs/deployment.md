@@ -12,7 +12,7 @@ node -v                               # 18+ required
 ```
 
 You'll need:
-- An OpenAI API key with at least $5 in credit (entire system runs at <$2/mo)
+- An OpenAI API key with at least $15 in credit (current model mix is roughly $10–15/mo at expected volume)
 - A Supabase project (free tier is enough)
 - A Vercel account (free tier is enough)
 
@@ -48,7 +48,7 @@ Optional tuning vars (defaults are fine):
 
 ```
 MAX_ARTICLES_PER_SOURCE=25
-BACKFILL_HOURS=720
+FIRST_RUN_LOOKBACK_HOURS=720
 ROUTER_CANDIDATE_K=5
 ```
 

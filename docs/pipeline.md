@@ -43,7 +43,7 @@ every 2 hours).
 2. For each source, fetches the RSS/Atom XML with retry/backoff
    (`FETCH_RETRIES=2`, exponential backoff).
 3. Concurrency limited to **3 parallel fetches** (was higher; reduced
-   after Google News 503s during heavy backfill).
+   after Google News 503s during heavy fetch bursts).
 4. Custom regex-based XML parser (`_shared/rss.ts`) — no external XML
    library needed.
 5. For each parsed item, checks if URL already exists → skip if yes.

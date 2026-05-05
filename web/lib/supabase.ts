@@ -189,15 +189,12 @@ export async function getStoriesByIds(ids: string[]): Promise<Story[]> {
 }
 
 // ─── Feed: full archive of last N days ────────────────────────────────────────
-// Used by the /feed/week page. Backfill stories are allowed by default because
-// the reset/backfill now uses event-oriented Google News queries and preserves
-// the original article published_at, so the date axis remains meaningful.
+// Used by the /feed/week page.
 
 export interface FeedQueryOptions {
   days: number;
   buckets: string[]; // e.g. ["MARKET","COMPETITOR"] or ["CARS24_PRESS","CARS24_PR"]
   importance?: Array<"HIGH" | "MED" | "LOW">;
-  excludeBackfill?: boolean;
 }
 
 export async function getFeedStories(opts: FeedQueryOptions): Promise<Story[]> {
@@ -211,9 +208,6 @@ export async function getFeedStories(opts: FeedQueryOptions): Promise<Story[]> {
     .limit(200);
   if (opts.importance && opts.importance.length > 0) {
     q = q.in("importance", opts.importance);
-  }
-  if (opts.excludeBackfill) {
-    q = q.not("primary_source_name", "like", "Google News Backfill:%");
   }
   const { data, error } = await q;
   if (error) {

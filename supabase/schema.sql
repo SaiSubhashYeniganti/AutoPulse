@@ -323,7 +323,7 @@ end $$;
 -- Returns top-K cluster candidates by cosine similarity, restricted to:
 --   1. Same primary_competitor (or both null) — prevents cross-competitor merges.
 --   2. Recent activity relative to the new article's published_at. This matters
---      for 90-day historical backfills: old articles from the same week should
+--      for older imported history: articles from the same week should
 --      still see each other as candidate clusters even though they are older
 --      than 14 days from "now".
 --   3. Not archived.

@@ -371,10 +371,9 @@ Deno.serve(async (req) => {
     // Defense in depth: archive stale clusters BEFORE routing, even if the
     // scheduled cron job lagged or hasn't run yet.
     //
-    // During historical reset/backfill reroutes, callers should set
-    // archive_stale=false. Otherwise a 60-day-old cluster created in batch N
-    // would be archived at the start of batch N+1 before another article from
-    // the same historical event can attach to it.
+    // Callers can disable this during controlled maintenance reroutes. Otherwise
+    // an older cluster created in batch N could be archived at the start of
+    // batch N+1 before another article from the same event can attach to it.
     if (archiveStale) {
       const { data: archivedCount, error: archErr } = await supabase.rpc(
         "archive_stale_clusters",

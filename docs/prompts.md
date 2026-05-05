@@ -351,7 +351,7 @@ expandable competitor row.
 ### Day-one quarterly fallback
 
 If <4 weekly summaries exist for a competitor, the function falls
-back to raw 90-day stories (including backfill). This is documented
+back to raw 90-day stories. This is documented
 in the prompt input so the model knows it's working with a deeper
 horizon than usual.
 

@@ -18,8 +18,8 @@ news, name one place scope was cut.
 > filtering out your own PR, and translating generic auto news into *'does
 > this affect us?'*. 30 to 45 minutes of mental work, every morning.
 >
-> Auto Pulse compresses it to a 2-minute read. One URL, refreshed every 2
-> hours. Let me show you."
+> Auto Pulse compresses it to a 2-minute read. One URL, fresh every morning.
+> Let me show you."
 
 ---
 
@@ -64,9 +64,8 @@ news, name one place scope was cut.
 > day's window. *[Walk through 1-2 stories briefly: title, the implication
 > line, the source count.]*
 >
-> The system runs every 2 hours, so this isn't a backfill — this is what
-> someone opening the page yesterday morning would have seen. Useful before
-> a Monday standup."
+> This is the stored edition for yesterday's brief. Useful before a Monday
+> standup."
 
 **Click Last 7 Days.**
 
@@ -201,14 +200,16 @@ news, name one place scope was cut.
 > "Seven tables — sources, articles, clusters, stories, daily_briefs,
 > competitor_summaries, pipeline_state."
 
-**Cron jobs.**
+**Schedules.**
 
-> "Four pg_cron schedules: pipeline every 2 hours, archive stale clusters
-> nightly at 4 AM IST, daily brief regenerates at 6:05 AM IST, competitor
-> rollups at 6:15. By the time you open the page with morning coffee,
-> everything is fresh.
+> "The only schedule that matters to the reader: the brief is generated every
+> morning at 6:05 AM IST, and competitor rollups at 6:15. There are internal
+> pipeline jobs keeping source data ready, but Vikram doesn't need to care
+> about those. By the time you open the page with morning coffee, everything
+> is fresh.
 >
-> Total OpenAI cost: under $2 a month. Vercel and Supabase on free tiers."
+> OpenAI cost is roughly $10–15 a month at the current volume. Vercel and
+> Supabase are on free tiers."
 
 ---
 
@@ -254,8 +255,8 @@ others briefly so it's clear every cut was deliberate, not accidental.)*
 ## Beat 11 — Close (30 sec)
 
 > "To recap: 10 sources, two-layer dedup with vector + LLM clustering, GPT-4o
-> for synthesis, refreshes every 2 hours, fresh brief at 6:05 AM IST, runs at
-> under $2 a month. Whole thing is one URL — read in 2 minutes, close the tab.
+> for synthesis, fresh brief every morning at 6:05 AM IST, and roughly $10–15
+> a month in OpenAI usage. Whole thing is one URL — read in 2 minutes, close the tab.
 >
 > Repo and Loom links are in the email reply. Built with Cursor, GPT-4o, and
 > Claude for code review. Happy to walk through any of this live in Gurugram —
@@ -284,8 +285,8 @@ Before you send, confirm you have answers for all five:
 |---|---|
 | "How many articles a day?" | 30–50 ingested, most dropped, 4–6 surface. |
 | "How accurate is dedup?" | Two-pass: URL exact match, then vector + LLM judge scoped to same competitor + tight time window. Structurally cannot mix companies. |
-| "Why GPT-4o, not cheaper?" | Editorial quality matters more than cost at this volume. Total spend is <$2/mo. Easy to swap models per stage. |
-| "Add a new competitor?" | Config change, not code. Backfills as articles come in. |
+| "Why GPT-4o, not cheaper?" | Editorial quality matters more than cost at this volume. OpenAI spend is roughly $10–15/mo. Easy to swap models per stage. |
+| "Add a new competitor?" | Config change, not code. It starts accumulating coverage as articles come in. |
 | "Hindi / vernacular?" | English-only today. Indic-script + obvious transliteration dropped pre-LLM. Vernacular is a roadmap item. |
 | "Email digest?" | Roadmap. Easy — same data, different render. |
 | "What if a source dies?" | Per-source `last_status` is logged. Source-health dashboard is roadmap. |
@@ -300,5 +301,5 @@ Before you send, confirm you have answers for all five:
 - Don't call it an "aggregator." It's a brief — the editing is the product.
 - Don't say "AI does it." Say "the model classifies / synthesizes." Specific is more credible than magical.
 - Don't apologize for the quiet-day widening. It's a feature; explain it as one.
-- Don't read out cron syntax. Just say "every 2 hours."
+- Don't talk about internal ingest cadence unless asked. The product promise is "fresh every morning at 6:05 AM IST."
 - Don't hedge on the scope cut. Pick one, own it.

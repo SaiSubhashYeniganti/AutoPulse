@@ -29,7 +29,7 @@ Total: **≈30 minutes** to ramp up enough to operate the system; **≈1 hour** 
 - **Stack** — Next.js 14 on Vercel · Supabase Postgres + pgvector + Edge Functions (Deno) · OpenAI GPT-4o · `pg_cron`.
 - **Volume** — ≈50 articles/day after dedup, ≈12 clusters/day, 4–6 hero stories surfaced per brief.
 - **Cost** — ≈$11/month at current volume, tracked per-day in `daily_briefs.ai_cost_usd`.
-- **Refresh cadence** — Pipeline every 2 hours; the 05:30 IST ingest feeds the 06:05 IST daily brief and 06:15 IST competitor summaries.
+- **Refresh cadence** — User-facing brief at 06:05 IST; competitor summaries at 06:15 IST.
 
 ---
 

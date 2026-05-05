@@ -31,11 +31,11 @@ stories
 
 ## What it does
 
-1. **Ingests** Indian auto news every 2 hours from 4 trade-press RSS feeds + 6+ Google News entity/topic queries (Cars24, Spinny, CarDekho, Droom, OLX Autos, "used cars India", "car depreciation India").
+1. **Collects** Indian auto news from 4 trade-press RSS feeds + 6+ Google News entity/topic queries (Cars24, Spinny, CarDekho, Droom, OLX Autos, "used cars India", "car depreciation India").
 2. **Classifies** every article through an LLM that asks: *"Would the Cars24 leadership team want to know about this in the next 24 hours?"* Outputs `importance`, `bucket`, `entities`, `primary_competitor`, and a 1-line `cars24_implication`.
 3. **Clusters** articles about the same real-world event using OpenAI embeddings as a candidate filter and GPT-4o for the final routing decision (so 5 articles about "Spinny raised X" become *one* story, not 5).
 4. **Synthesizes** each cluster into a single editorial story with a "What this means for Cars24" callout.
-5. **Serves** a single web page: today's hero, weekly recap, per-competitor pulse, and yesterday's brief in an accordion. No tabs to navigate, no login. One scroll. Built for an executive with a coffee.
+5. **Serves** a single web page: Feed, Cars24 mentions, and Competitors views. No login. Built for an executive with a coffee.
 
 ---
 

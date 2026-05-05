@@ -10,7 +10,7 @@
 
 ## TL;DR
 
-A single web page, refreshed every 2 hours. The Feed tab shows the 4–6 stories from the Indian auto market that matter today — competitor moves and market signals — each with a 1-line "what this means for Cars24" callout, plus Yesterday and Last 7 Days views. A separate Cars24 sub-tab inside Feed surfaces external press about Cars24 (Today + Last 14 Days). The Competitors tab gives per-competitor weekly + quarterly rollups. Read in 2 minutes; close the tab.
+A single web page, fresh every morning. The Feed tab shows the 4–6 stories from the Indian auto market that matter today — competitor moves and market signals — each with a 1-line "what this means for Cars24" callout, plus Yesterday and Last 7 Days views. A separate Cars24 sub-tab inside Feed surfaces external press about Cars24 (Today + Last 14 Days). The Competitors tab gives per-competitor weekly + quarterly rollups. Read in 2 minutes; close the tab.
 
 ---
 
@@ -78,7 +78,7 @@ Yesterday and Last 7 Days are segments inside the Feed tab, not separate pages. 
 
 The product is not "fetch RSS and show it." It's an opinionated edit. Here's what runs in the background, in human terms:
 
-### Step 1 — **Ingest** (every 2h)
+### Step 1 — **Ingest**
 We pull the latest items from 10+ feeds (4 trade-press RSS + 6 Google News queries that act as competitor- and topic-tagged feeds). Deduplicated by URL.
 
 ### Step 2 — **Classify** (LLM)
@@ -109,7 +109,7 @@ For each cluster (= group of articles about one event), GPT-4o reads all the mem
 Source articles are kept, attributed, and linked.
 
 ### Step 5 — **Generate the daily brief**
-Once a day at 06:05 IST, after the 05:30 IST ingest has time to finish, we pick stories by importance + recency, decide the time window (24/48/72h based on volume), and cache the result. Every page load reads from this cached row.
+Once a day at 06:05 IST, after the latest source data is ready, we pick stories by importance + recency, decide the time window (24/48/72h based on volume), and cache the result. Every page load reads from this cached row.
 
 ### Step 6 — **Generate competitor summaries**
 At 06:15 IST, using the same fresh morning dataset, for each competitor we generate:
@@ -157,6 +157,6 @@ The product is mostly the iceberg under the waterline. The 1-page brief is what 
 - **Slack integration** (`/cars24-brief` slash command).
 - **Personalized lenses** (COO sees ops-tilted, CFO sees finance/funding-tilted).
 - **Source expansion** to 25–30 sources, including international used-car coverage (Carvana, Cazoo, AutoTrader UK) for benchmark signal.
-- **Alerts** for HIGH-importance stories breaking outside the 2h cron window.
+- **Alerts** for HIGH-importance stories that break after the morning brief.
 - **Source-health dashboard** so it's obvious when a feed dies.
 - **Scoring & feedback loop** — thumbs up/down so the model learns the editorial bar over time.

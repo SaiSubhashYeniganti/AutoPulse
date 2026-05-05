@@ -149,14 +149,13 @@ async function fetchStoriesForCompetitor(
   competitor: string,
   daysBack: number,
   minImportance: "MED" | "LOW" = "MED",
-  excludeBackfill = false,
 ): Promise<StoryRow[]> {
   const cutoff = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000)
     .toISOString();
   const importanceFilter = minImportance === "MED"
     ? ["HIGH", "MED"]
     : ["HIGH", "MED", "LOW"];
-  let query = supabase
+  const query = supabase
     .from("stories")
     .select(
       "id, title, summary, cars24_implication, importance, primary_competitor, entities, published_at, primary_source_name, source_count",
@@ -165,10 +164,6 @@ async function fetchStoriesForCompetitor(
     .in("importance", importanceFilter)
     .eq("primary_competitor", competitor)
     .order("published_at", { ascending: false });
-
-  if (excludeBackfill) {
-    query = query.not("primary_source_name", "like", "Google News Backfill:%");
-  }
 
   const { data, error } = await query;
   if (error) throw error;

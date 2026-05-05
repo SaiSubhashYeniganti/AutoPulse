@@ -58,8 +58,8 @@ here.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | uuid PK | |
-| `source_id` | uuid → sources(id) | nullable; backfill articles set this to null |
-| `source_name` | text NOT NULL | Denormalized for display + backfill prefix matching |
+| `source_id` | uuid → sources(id) | nullable for imported rows |
+| `source_name` | text NOT NULL | Denormalized for display |
 | `title`, `summary`, `url` (UNIQUE), `image_url`, `published_at`, `fetched_at` | | Standard ingestion fields |
 
 ### Classifier output (set by `classify-articles`)

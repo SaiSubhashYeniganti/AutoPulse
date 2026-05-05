@@ -30,7 +30,7 @@ export default function HowPage() {
 
         <Section title="What Auto Pulse does">
           <p className="text-[16px]">
-            One page, refreshed every two hours. The 4–6 stories from the Indian auto
+            One page, fresh every morning. The 4–6 stories from the Indian auto
             market that actually matter today, each with a one-line read on what it
             means for Cars24. A separate Cars24 tab for press about Cars24 itself.
             A Competitors tab to track each major player week-by-week and
@@ -42,7 +42,7 @@ export default function HowPage() {
           <Step
             n={1}
             title="Ingest"
-            body="Every 2 hours we pull the latest articles from 10 sources — trade press RSS feeds plus Google News queries scoped to each competitor and topic. Duplicate URLs are skipped."
+            body="We pull the latest articles from 10 sources — trade press RSS feeds plus Google News queries scoped to each competitor and topic. Duplicate URLs are skipped."
           />
           <Step
             n={2}
@@ -73,8 +73,8 @@ export default function HowPage() {
               <Row label="Backend"    value="Supabase Edge Functions — 7 small TypeScript services, ~2,400 lines total." />
               <Row label="Database"   value="Supabase Postgres with pgvector for similarity search. 7 tables." />
               <Row label="Models"     value="GPT-4o for classification & synthesis. text-embedding-3-small for clustering." />
-              <Row label="Scheduling" value="pg_cron inside Supabase. Pipeline every 2h; brief at 06:05 IST." />
-              <Row label="Cost"       value="Under $2/month in OpenAI usage. Vercel + Supabase on free tiers." />
+              <Row label="Scheduling" value="pg_cron inside Supabase. Daily brief at 06:05 IST; competitor rollups at 06:15 IST." />
+              <Row label="Cost"       value="Roughly $10–15/month in OpenAI usage at current volume. Vercel + Supabase on free tiers." />
             </tbody>
           </table>
         </Section>

@@ -60,8 +60,8 @@ Format: **Decision → Why → What we gave up.**
 - **Why:** Initially shipped with `revalidate = 300` ISR but the build-time prerender served an empty homepage. SSR (`force-dynamic`) fixed it and is fast enough — the page makes 3 cheap Supabase reads.
 - **Trade-off:** Each page load hits the DB. At our traffic this is irrelevant.
 
-### 11. No historical backfill — quarterly fills in organically
-- **Why:** Google News date-range queries are heavy and prone to 503s, so we don't keep a backfill function in the live system. The competitor quarterly view shows an honest "filling in" state until ~30+ days of live RSS history accumulate.
+### 11. Quarterly fills in organically
+- **Why:** Google News date-range queries are heavy and prone to 503s, so competitor quarterly depth builds from the live source stream. The competitor quarterly view shows an honest "filling in" state until ~30+ days of RSS history accumulate.
 - **Trade-off:** Day-one quarterly view looks shallow until live ingest catches up. Acceptable, and consistent with the product's honest-empty-states principle.
 
 ---

@@ -28,7 +28,10 @@ const MAX_ARTICLES_PER_SOURCE = parseInt(
   Deno.env.get("MAX_ARTICLES_PER_SOURCE") ?? "25",
   10,
 );
-const BACKFILL_HOURS = parseInt(Deno.env.get("BACKFILL_HOURS") ?? "720", 10);
+const FIRST_RUN_LOOKBACK_HOURS = parseInt(
+  Deno.env.get("FIRST_RUN_LOOKBACK_HOURS") ?? "720",
+  10,
+);
 const FETCH_RETRIES = parseInt(Deno.env.get("FETCH_RETRIES") ?? "2", 10);
 
 function sleep(ms: number): Promise<void> {
@@ -73,7 +76,7 @@ async function fetchWithRetry(url: string): Promise<Response> {
     last = res;
     if (![429, 500, 502, 503, 504].includes(res.status)) return res;
     if (attempt < FETCH_RETRIES) {
-      // Google News can transiently 503 from serverless IPs after bursty backfills.
+      // Google News can transiently 503 from serverless IPs during bursty fetches.
       await sleep(800 * (attempt + 1));
     }
   }
@@ -96,8 +99,8 @@ async function ingestOneSource(source: Source): Promise<IngestStats> {
     const xml = await res.text();
     const { items } = parseFeed(xml);
 
-    // Apply per-source cap and the backfill cutoff.
-    const cutoff = new Date(Date.now() - BACKFILL_HOURS * 60 * 60 * 1000);
+    // Apply per-source cap and the first-run lookback cutoff.
+    const cutoff = new Date(Date.now() - FIRST_RUN_LOOKBACK_HOURS * 60 * 60 * 1000);
     const recent = items
       .filter((it: ParsedItem) => it.pubDate >= cutoff)
       .sort((a, b) => b.pubDate.getTime() - a.pubDate.getTime())

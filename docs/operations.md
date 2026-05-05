@@ -30,7 +30,7 @@ state.
 | `SUPABASE_URL` | Auto-injected by Supabase. |
 | `CLASSIFY_BATCH_SIZE` | Optional. Default 30. |
 | `CLASSIFY_CONCURRENCY` | Optional. Default 5. |
-| `BACKFILL_HOURS` | First-run RSS catch-up window for `rss-ingest`. Default 720 (30d). |
+| `FIRST_RUN_LOOKBACK_HOURS` | First-run RSS catch-up window for `rss-ingest`. Default 720 (30d). |
 
 ### Vercel (Project → Settings → Environment Variables)
 
@@ -240,7 +240,7 @@ These are open and would be addressed if this became a real product.
    cron, but there is no dashboard for reviewing or manually reopening
    archived clusters.
 
-6. **No historical backfill.** Quarterly depth accumulates organically
+6. **Quarterly depth accumulates organically**
    from live RSS. The competitor quarterly view shows an honest
    "filling in" state until ~30+ days of history exist.
 

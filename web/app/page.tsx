@@ -36,7 +36,7 @@ export default async function Page() {
         <div className="mt-12 p-10 text-center animate-fade-in-up border-b border-t border-apple-100">
           <p className="font-display text-2xl text-apple-800 font-semibold">No brief yet.</p>
           <p className="mt-3 text-sm text-apple-500 font-sans">
-            The pipeline runs every 2 hours. First brief should appear within 30 minutes of deploy.
+            The brief is generated every morning. First brief should appear after the next scheduled run.
           </p>
         </div>
         <Footer />

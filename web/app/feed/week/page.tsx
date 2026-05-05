@@ -17,13 +17,11 @@ export default async function WeekPage({ searchParams }: PageProps) {
       days: 7,
       buckets: ["MARKET", "COMPETITOR"],
       importance: ["HIGH", "MED", "LOW"],
-      excludeBackfill: false,
     }),
     getFeedStories({
       days: 90,
       buckets: ["CARS24_PRESS", "CARS24_PR"],
       importance: ["HIGH", "MED", "LOW"],
-      excludeBackfill: false,
     }),
   ]);
 
