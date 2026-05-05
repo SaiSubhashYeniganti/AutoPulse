@@ -50,7 +50,6 @@ Optional tuning vars (defaults are fine):
 MAX_ARTICLES_PER_SOURCE=25
 BACKFILL_HOURS=720
 ROUTER_CANDIDATE_K=5
-HERO_MIN_COUNT=3
 ```
 
 ---

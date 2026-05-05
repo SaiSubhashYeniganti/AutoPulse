@@ -2,7 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Cars24 Brief — Daily auto-industry intelligence",
+  title: "Auto Pulse — Daily auto-industry intelligence",
   description: "AI-aggregated brief on Indian used-car market and competitor moves. Read in 2 minutes.",
   robots: { index: false, follow: false }, // private demo build
 };

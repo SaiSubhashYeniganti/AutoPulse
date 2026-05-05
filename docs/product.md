@@ -10,7 +10,7 @@
 
 ## TL;DR
 
-A single web page, refreshed every 2 hours, that surfaces 4–6 stories from the Indian auto market — competitor moves, market signals, external Cars24 coverage — each with a 1-line "what this means for Cars24" callout. Plus a per-competitor pulse strip with weekly + quarterly rollups, and a "yesterday's brief" accordion. Read in 2 minutes; close the tab.
+A single web page, refreshed every 2 hours. The Feed tab shows the 4–6 stories from the Indian auto market that matter today — competitor moves and market signals — each with a 1-line "what this means for Cars24" callout, plus Yesterday and Last 7 Days views. A separate Cars24 sub-tab inside Feed surfaces external press about Cars24 (Today + Last 14 Days). The Competitors tab gives per-competitor weekly + quarterly rollups. Read in 2 minutes; close the tab.
 
 ---
 
@@ -41,18 +41,23 @@ Explicitly **not** for: auto journalists, end consumers, or marketing/PR (each n
 
 ## 3. The product, in 3 sections
 
-### 3.1 Today's Brief (the "Hero")
+### 3.1 Feed — Today's Brief (the "Hero")
 
-The 4–6 most important stories from the last 24 hours.
+A single ranked list of the 4–6 most important stories from the last 24 hours. No section headers, no bucket pills on the row — bucket is an internal routing concept, not a reader concept.
 
 For each story:
-- **A bucket tag** — `[COMPETITOR]`, `[MARKET]`, or `[CARS24]` — so the reader knows in one word why a story is in the brief.
 - **A one-line title.**
 - **2–3 sentences of context** (synthesized from every outlet that covered the story).
 - **A "So what for Cars24?" line** — only when the model has a genuine, specific take. Otherwise we suppress the line; better to say nothing than pad with *"Cars24 should monitor this development."*
 - **Source attribution** — primary outlet name + an explicit *"Read at [source] →"* link. If multiple outlets covered it we say so (*"ET Auto + 3 others"*).
 
-**Quiet-day handling.** If the 24h window has fewer than the minimum number of strong stories, the window auto-widens to 48h, then 72h, with an honest banner: *"Quiet last 24 hours — showing the last 48."* No filler.
+The Feed tab has three time segments: **Today**, **Yesterday**, and **Last 7 Days**.
+
+**Quiet-day handling.** If the 24h window has no fresh, eligible stories, the window auto-widens to 48h, then 72h, pulling in stories the reader has not seen in a prior brief. If there is one strong story, we show one story. No filler.
+
+### 3.1a Feed — Cars24 sub-tab
+
+External press about Cars24 lives in its own sub-tab inside Feed. Different read from competitor moves — same shape, but two segments: **Recent Cars24 mentions** and **Earlier in the last 14 days**. The full 90-day Cars24 archive lives at `/feed/week?tab=cars24`.
 
 ### 3.2 Competitor Pulse
 
@@ -63,9 +68,9 @@ One row per major competitor: Cars24, Spinny, CarDekho, Droom, OLX Autos.
   - **Last week** — themed bullets (e.g. *Funding & investor activity* → 3 bullets → each bullet links to its source articles).
   - **Last quarter** — same shape, longer horizon. When sparse, the UI says so plainly: *"This quarter (filling in...) — only 4 sourced stories so far."*
 
-### 3.3 Yesterday's Brief
+### 3.3 Yesterday + Last 7 Days
 
-An accordion at the bottom. Same hero shape, just from yesterday. Useful before a Monday standup (*"did anything ship over the weekend?"*). Day-before-yesterday is intentionally not kept — keeps the page lean and the product opinionated. The full archive lives at `/feed/week`.
+Yesterday and Last 7 Days are segments inside the Feed tab, not separate pages. Yesterday is the same hero shape, just from yesterday — useful before a Monday standup (*"did anything ship over the weekend?"*). Last 7 Days is the weekly recap (HIGH-importance items, topped up with MEDIUMs that have a concrete Cars24 implication if HIGH alone is thin). Day-before-yesterday is intentionally not kept on the home page. The full 7-day and 90-day archives live at `/feed/week`.
 
 ---
 
@@ -126,7 +131,7 @@ Quarterly competitor depth is built up organically from the live RSS feeds. Unti
 | *"Read at [source] →"* link | The original URL + full source name |
 | *"Quiet last 24h — showing since Friday"* | The dynamic 24h → 48h → 72h fallback |
 | *"Filling in..."* on quarterly | The honest empty-state guard |
-| The bucket tag pill `[COMPETITOR]` | Every story has been routed through 4-bucket classification |
+| A single ranked Feed (no section headers) | Every story has been routed through 4-bucket classification under the hood; the bucket decides which tab/lane it lands in |
 
 The product is mostly the iceberg under the waterline. The 1-page brief is what surfaces.
 

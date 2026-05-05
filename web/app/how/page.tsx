@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "How this works — Cars24 Brief",
-  description: "Architecture and design decisions behind the Cars24 daily brief.",
+  title: "How Auto Pulse works",
+  description: "A 2-minute read on what Auto Pulse does, how it works, and how it's built.",
 };
 
 export default function HowPage() {
@@ -10,136 +10,89 @@ export default function HowPage() {
     <main className="mx-auto max-w-prose px-5 sm:px-6 py-12 sm:py-16">
       <header className="border-b border-apple-300 pb-6 mb-10 animate-fade-in-up">
         <Link href="/" className="font-semibold text-[13px] text-apple-blue hover:text-apple-blueHover transition-colors">
-          ← Cars24 Brief
+          ← Auto Pulse
         </Link>
-        <h1 className="mt-4 font-display text-4xl font-bold text-apple-800 tracking-tight">How this works</h1>
+        <h1 className="mt-4 font-display text-4xl font-bold text-apple-800 tracking-tight">How Auto Pulse works</h1>
         <p className="mt-3 text-[16px] text-apple-500 font-sans">
-          Architecture, design decisions, and what's deliberately out of scope.
+          A 2-minute read on what it does, how it works, and how it's built.
         </p>
       </header>
 
       <article className="prose-content animate-fade-in-up stagger-1 opacity-0">
-        <Section title="The product in one paragraph">
+        <Section title="The problem">
           <p className="text-[16px]">
-            Every day this site assembles a 1-page brief on the Indian used-car market and Cars24's competitors —
-            ingested from 10 sources, deduplicated into stories, and synthesized into editorial cards with a
-            "what this means for Cars24" callout. Built to be read in under two minutes by the leadership team
-            with morning coffee.
+            Tracking the Indian auto market means opening 8–10 sites a day, mentally
+            deduping the same story re-syndicated five times, and translating generic
+            headlines into <em>"does this affect us?"</em>. That's 30–45 minutes of
+            mental work, every day, before a single decision is made.
           </p>
         </Section>
 
-        <Section title="Architecture">
-          <Diagram />
-
-          <p className="mt-8 text-[16px]">
-            The pipeline runs end-to-end every 2 hours via Supabase pg_cron. The brief is regenerated and
-            cached as a single row in <code className="font-mono text-[14px] bg-apple-200 text-apple-800 px-1.5 py-0.5 rounded">daily_briefs</code> at 06:05 IST daily. The website reads
-            from that row, so a page load is a single Postgres lookup.
+        <Section title="What Auto Pulse does">
+          <p className="text-[16px]">
+            One page, refreshed every two hours. The 4–6 stories from the Indian auto
+            market that actually matter today, each with a one-line read on what it
+            means for Cars24. A separate Cars24 tab for press about Cars24 itself.
+            A Competitors tab to track each major player week-by-week and
+            quarter-by-quarter.
+          </p>
+          <p className="text-[16px] mt-4">
+            Read in 2 minutes. Close the tab.
           </p>
         </Section>
 
-        <Section title="Five design decisions worth talking about">
-          <DesignDecision
-            title="Embeddings as a candidate filter, LLM as the final clusterer"
-          >
-            Pure-LLM clustering doesn't scale beyond ~12 active clusters per call (token limits + reasoning quality
-            collapse). Pure-embedding clustering overfits — every article about "used cars India" ends up looking
-            similar; the model can tell two events apart that share vocabulary, embeddings can't.
-            <br /><br />
-            The hybrid pattern: embed each new article, fetch the 5 cosine-closest existing clusters via pgvector,
-            send those candidates + the article to GPT-4o, ask it to pick one or create a new cluster. Scales to
-            thousands of clusters; precision stays high because the LLM only sees 5 candidates at a time.
-          </DesignDecision>
-
-          <DesignDecision
-            title="Single-axis importance, with a per-article Cars24 implication"
-          >
-            The classifier rates each article on one HIGH/MED/LOW/DROP axis instead of two-axis (impact × Cars24
-            relevance). Two-axis is harder for an LLM to keep consistent across hundreds of articles. The
-            relevance signal is captured separately, in prose, as the <code className="font-mono text-[14px] bg-apple-200 text-apple-800 px-1.5 py-0.5 rounded">cars24_implication</code> field —
-            free text instead of an enum. This is what shows up in italic under each story.
-          </DesignDecision>
-
-          <DesignDecision
-            title="Synthesis everywhere — never raw lists"
-          >
-            The hero stories, the per-competitor weekly view, and the per-competitor quarterly view are ALL
-            AI-synthesized. The whole product promise is "AI does the synthesis so the reader doesn't have to."
-            The moment you show a raw list of headlines, you've broken that promise.
-            <br /><br />
-            Quarterly summaries use hierarchical summarization (12 weekly summaries → quarterly arcs) instead of
-            cramming 90 days of stories into one prompt. Avoids context-window blowup and produces tighter output.
-          </DesignDecision>
-
-          <DesignDecision
-            title="Quiet-day fallback widens the window automatically"
-          >
-            Indian auto news doesn't fire 24/7 the way crypto does. On thin days the brief honestly says "Quiet
-            last 24 hours — showing the last 48" instead of padding with low-value stories. The window expands
-            from 24h → 48h → 72h until we hit 3 HIGH/MED stories, then stops.
-            <br /><br />
-            The brief is allowed to say "nothing happened today." That preserves the signal.
-          </DesignDecision>
-
-          <DesignDecision
-            title="Google News RSS for competitor watching, not blog scraping"
-          >
-            Spinny / CarDekho / Droom / OLX blogs are SEO content with marketing tone — not where you find
-            "Spinny raised $283M" or "CarDekho cut 200 jobs." Google News surfaces real press coverage from
-            ET Auto, Mint, MoneyControl, etc. — the outlets that actually break business news.
-            <br /><br />
-            6 of the 10 sources are Google News queries (one per competitor + topic queries for "used cars India"
-            and "car depreciation India"). The remaining 4 are direct trade-press RSS for general industry coverage.
-          </DesignDecision>
+        <Section title="How it works (in plain English)">
+          <Step
+            n={1}
+            title="Ingest"
+            body="Every 2 hours we pull the latest articles from 10 sources — trade press RSS feeds plus Google News queries scoped to each competitor and topic. Duplicate URLs are skipped."
+          />
+          <Step
+            n={2}
+            title="Classify"
+            body="GPT-4o reads each new article and decides how important it is (HIGH / MEDIUM / LOW / DROP), which companies it's about, and whether there's a specific implication for Cars24. Noise — motorsport, generic listicles, our own outbound PR — is dropped here."
+          />
+          <Step
+            n={3}
+            title="Cluster"
+            body="When 12 outlets cover the same event, we treat it as one story. Each article is converted into a vector fingerprint, matched against existing clusters of the same competitor in a tight time window, and GPT-4o makes the final call on whether to attach or start a new cluster."
+          />
+          <Step
+            n={4}
+            title="Synthesize"
+            body="For each cluster, GPT-4o reads every member article and writes one editorial story — title, 3-sentence summary, sources linked, and the 'so what for Cars24?' line (suppressed when there's nothing genuine to say)."
+          />
+          <Step
+            n={5}
+            title="Compose the brief"
+            body="Once a day at 06:05 IST we pick the stories worth surfacing, decide the time window (24h, widening to 48h or 72h on quiet days), and cache the result. Every page load reads from that cached row."
+          />
         </Section>
 
-        <Section title="Out of scope (deliberately)">
-          <ul className="space-y-5 text-[15px] text-apple-500 font-sans">
-            <li>
-              <strong className="text-apple-800 block font-display text-[17px] mb-1 font-bold">Auth, accounts, preferences.</strong> A public URL is right for a leadership read.
-              For an internal tool used by 100 people, you'd want per-user dashboards.
-            </li>
-            <li>
-              <strong className="text-apple-800 block font-display text-[17px] mb-1 font-bold">Mobile app.</strong> Web is the right form factor for a 1-pager. Native mobile would
-              add no value for the use case.
-            </li>
-            <li>
-              <strong className="text-apple-800 block font-display text-[17px] mb-1 font-bold">Search, filters, multi-day archive.</strong> Feature creep for the brief; required for
-              an internal tool.
-            </li>
-            <li>
-              <strong className="text-apple-800 block font-display text-[17px] mb-1 font-bold">Push notifications.</strong> The brief is morning-coffee territory. Push would feel like
-              spam unless gated to HIGH-only — and HIGH events fire at most a few times a week.
-            </li>
-            <li>
-              <strong className="text-apple-800 block font-display text-[17px] mb-1 font-bold">A/B prompt evaluation.</strong> Every prompt change ships to 100% with no holdout test.
-              For production this would be a labelled gold-set + regression suite.
-            </li>
-            <li>
-              <strong className="text-apple-800 block font-display text-[17px] mb-1 font-bold">Editorial feedback loop.</strong> No way for a human reviewer to mark "this cluster was
-              wrong, split it" and have the system learn. Would matter once a team starts using it daily.
-            </li>
-            <li>
-              <strong className="text-apple-800 block font-display text-[17px] mb-1 font-bold">Nightly cluster QA pass.</strong> Clusters are decided online and never revisited.
-              A nightly recompute would catch drift.
-            </li>
-          </ul>
-        </Section>
-
-        <Section title="Stack">
+        <Section title="How it's built">
           <table className="w-full text-[15px] text-apple-500 border-collapse">
             <tbody>
-              <Row label="Frontend"   value="Next.js 14 (App Router) on Vercel · React Server Components · Tailwind · TypeScript" />
-              <Row label="Database"   value="Supabase Postgres + pgvector (1536-dim cosine, ivfflat index)" />
-              <Row label="Backend"    value="Supabase Edge Functions (Deno + TypeScript) · 7 functions · ~2,400 LOC" />
-              <Row label="LLM"        value="gpt-4o for classification, routing, synthesis · gpt-4o-mini for pulse context lines · text-embedding-3-small" />
-              <Row label="Scheduling" value="pg_cron inside Supabase (every 2h pipeline run + 06:05 IST brief)" />
+              <Row label="Frontend"   value="Next.js web app on Vercel. Auto-deploys from GitHub." />
+              <Row label="Backend"    value="Supabase Edge Functions — 7 small TypeScript services, ~2,400 lines total." />
+              <Row label="Database"   value="Supabase Postgres with pgvector for similarity search. 7 tables." />
+              <Row label="Models"     value="GPT-4o for classification & synthesis. text-embedding-3-small for clustering." />
+              <Row label="Scheduling" value="pg_cron inside Supabase. Pipeline every 2h; brief at 06:05 IST." />
+              <Row label="Cost"       value="Under $2/month in OpenAI usage. Vercel + Supabase on free tiers." />
             </tbody>
           </table>
         </Section>
 
+        <Section title="What it's not">
+          <ul className="space-y-3 text-[16px] text-apple-500 font-sans list-disc pl-5 marker:text-apple-400">
+            <li>Not an aggregator. It's an opinionated edit — most ingested articles never surface.</li>
+            <li>No accounts, no personalization, no email digest. One URL, anyone with the link can read.</li>
+            <li>No mobile app. Web is the right shape for a one-page brief.</li>
+            <li>No padding. If today is genuinely quiet, the brief says so.</li>
+          </ul>
+        </Section>
+
         <p className="mt-16 text-[14px] font-medium">
-          <Link href="/" className="text-apple-blue hover:text-apple-blueHover transition-colors">← Back to today's brief</Link>
+          <Link href="/" className="text-apple-blue hover:text-apple-blueHover transition-colors">← Back to today's pulse</Link>
         </p>
       </article>
     </main>
@@ -155,11 +108,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function DesignDecision({ title, children }: { title: string; children: React.ReactNode }) {
+function Step({ n, title, body }: { n: number; title: string; body: string }) {
   return (
-    <div className="mt-8 first:mt-0 py-6 border-b border-apple-100">
-      <h3 className="font-display text-[19px] font-bold text-apple-800 tracking-tight">{title}</h3>
-      <p className="mt-3 text-[15px] leading-relaxed text-apple-500 font-sans">{children}</p>
+    <div className="mt-6 first:mt-0 flex gap-5">
+      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-apple-100 text-apple-800 font-mono text-[13px] font-bold flex items-center justify-center mt-0.5">
+        {n}
+      </div>
+      <div className="flex-1">
+        <h3 className="font-display text-[17px] font-bold text-apple-800 tracking-tight">{title}</h3>
+        <p className="mt-1.5 text-[15px] leading-relaxed text-apple-500 font-sans">{body}</p>
+      </div>
     </div>
   );
 }
@@ -170,43 +128,5 @@ function Row({ label, value }: { label: string; value: string }) {
       <td className="py-4 pr-4 align-top font-bold text-apple-800 w-32 font-display">{label}</td>
       <td className="py-4 align-top leading-relaxed">{value}</td>
     </tr>
-  );
-}
-
-function Diagram() {
-  return (
-    <pre className="mt-4 overflow-x-auto py-6 text-[13px] leading-relaxed font-mono text-apple-500 border-b border-apple-100">
-{`  10 RSS / Google News sources
-        │
-        ▼
-  rss-ingest          ────►  articles                (raw, deduped by URL)
-        │
-        ▼
-  classify-articles   ────►  + importance,
-   gpt-4o                     entities,
-                              cars24_implication
-        │
-        ▼
-  route-articles      ────►  + embedding (1536-dim,
-   embed → cosine top-5         text-embedding-3-small)
-   → gpt-4o decides             cluster_id
-                                ▼
-                              clusters               (groups of articles
-                                                      about the same event)
-        │
-        ▼
-  synthesize-stories  ────►  stories                 (one per cluster:
-   gpt-4o                                              title, summary,
-                                                       cars24_implication,
-                                                       importance)
-        │
-        ├────►  generate-daily-brief        ────►  daily_briefs
-        │       (hero + competitor pulse,
-        │        24h→48h→72h fallback)
-        │
-        └────►  generate-competitor-summary ────►  competitor_summaries
-                (week + quarter, hierarchical)
-`}
-    </pre>
   );
 }

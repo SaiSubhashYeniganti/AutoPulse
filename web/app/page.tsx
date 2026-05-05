@@ -51,13 +51,17 @@ export default async function Page() {
 
   const yesterdayHero = yesterday?.hero_stories ?? [];
 
+  const quietNote =
+    today.is_quiet_day && today.window_hours && today.window_hours > 24
+      ? heroMarket.length > 0
+        ? `No fresh stories in the normal 24-hour window. Showing recent unshown stories from the last ${Math.round(today.window_hours / 24)} days.`
+        : "No fresh stories in the normal 24-hour window."
+      : null;
+
   const marketPane = (
     <TimeSegmentControl
-      todayLabel={
-        today.is_quiet_day && today.quiet_day_note
-          ? `Today — ${today.quiet_day_note}`
-          : "Today"
-      }
+      todayLabel="Today"
+      todayNote={quietNote}
       todayStories={heroMarket}
       weeklyStories={weeklyMarket}
       yesterdayStories={yesterdayHero}
@@ -84,9 +88,6 @@ export default async function Page() {
       <Header
         date={today.brief_date}
         generatedAt={today.generated_at}
-        windowHours={today.window_hours}
-        isQuietDay={today.is_quiet_day}
-        quietNote={today.quiet_day_note}
       />
 
       <div className="mt-12 animate-fade-in-up stagger-1 opacity-0">
@@ -98,11 +99,7 @@ export default async function Page() {
         />
       </div>
 
-      <Footer
-        cost={today.ai_cost_usd}
-        totalStories={today.total_stories_in_window}
-        generatedAt={today.generated_at}
-      />
+      <Footer />
     </main>
   );
 }
@@ -113,22 +110,16 @@ export default async function Page() {
 function Header({
   date,
   generatedAt,
-  windowHours,
-  isQuietDay,
-  quietNote,
 }: {
   date?: string;
   generatedAt?: string;
-  windowHours?: number;
-  isQuietDay?: boolean;
-  quietNote?: string | null;
 }) {
   return (
     <header className="mt-8 mb-4 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <p className="font-sans text-[12px] font-bold tracking-widest text-apple-400 uppercase">
-            Cars24 Brief
+            Auto Pulse
           </p>
           {date && (
             <h1 className="mt-2 font-display text-4xl sm:text-5xl font-bold text-apple-800 tracking-tight">
@@ -139,56 +130,25 @@ function Header({
         {generatedAt && (
           <div className="text-left sm:text-right">
             <p className="text-[12px] font-medium text-apple-400">
-              Generated {formatTime(generatedAt)} IST
-              {windowHours && windowHours > 24 && (
-                <span className="block mt-0.5 text-apple-500">Window: {windowHours}h</span>
-              )}
+              Updated {formatTime(generatedAt)} IST
             </p>
           </div>
         )}
       </div>
-      {isQuietDay && quietNote && (
-        <p className="mt-4 text-[15px] text-apple-500 font-sans">{quietNote}</p>
-      )}
     </header>
   );
 }
 
 // ─── Footer ────────────────────────────────────────────────────────────────────
 
-function Footer({
-  cost,
-  totalStories,
-  generatedAt,
-}: {
-  cost?: number | null;
-  totalStories?: number;
-  generatedAt?: string;
-}) {
+function Footer() {
   return (
     <footer className="mt-24 border-t border-apple-300 pt-8 pb-16 animate-fade-in-up stagger-4 opacity-0">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] font-medium text-apple-500 font-sans">
-        {typeof cost === "number" && cost > 0 && (
-          <>
-            <span className="font-mono text-[12px]">Cost: ${cost.toFixed(3)}</span>
-            <span className="text-apple-300" aria-hidden>|</span>
-          </>
-        )}
-        {typeof totalStories === "number" && (
-          <>
-            <span>{totalStories} stor{totalStories === 1 ? "y" : "ies"} in window</span>
-            <span className="text-apple-300" aria-hidden>|</span>
-          </>
-        )}
+      <div className="text-[13px] font-medium font-sans">
         <Link href="/how" className="text-apple-blue hover:text-apple-blueHover transition-colors">
-          How this works
+          How Auto Pulse works
         </Link>
       </div>
-      {generatedAt && (
-        <p className="mt-4 font-mono text-[11px] text-apple-400">
-          Last refresh: {new Date(generatedAt).toISOString()}
-        </p>
-      )}
     </footer>
   );
 }

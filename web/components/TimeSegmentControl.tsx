@@ -7,6 +7,7 @@ import type { HeroStory } from "@/lib/supabase";
 
 export function TimeSegmentControl({
   todayLabel,
+  todayNote,
   todayStories,
   weeklyStories,
   weeklyLabel = "This week",
@@ -15,6 +16,7 @@ export function TimeSegmentControl({
   seeAllHref,
 }: {
   todayLabel: string;
+  todayNote?: string | null;
   todayStories: HeroStory[];
   weeklyStories: HeroStory[];
   weeklyLabel?: string;
@@ -25,30 +27,29 @@ export function TimeSegmentControl({
   const hasYesterday = yesterdayDate !== null;
   const [tab, setTab] = useState<"today" | "weekly" | "yesterday">("today");
 
-  // Format yesterday date for tab
   const yesterdayText = yesterdayDate ? new Date(yesterdayDate).toLocaleDateString("en-IN", { weekday: "short" }) : "Yesterday";
 
   return (
     <div>
       {/* Apple-style segmented control */}
       <div className="bg-[#E8E8ED] p-1 rounded-lg flex items-center mb-8 w-full sm:w-auto sm:inline-flex">
-        <SegmentButton 
-          isActive={tab === "today"} 
-          onClick={() => setTab("today")} 
-          label="Today" 
-        />
-        <SegmentButton 
-          isActive={tab === "weekly"} 
-          onClick={() => setTab("weekly")} 
-          label={weeklyLabel === "Earlier in the last 14 days" ? "Last 14 Days" : "Last 7 Days"} 
+        <SegmentButton
+          isActive={tab === "today"}
+          onClick={() => setTab("today")}
+          label="Today"
         />
         {hasYesterday && (
-          <SegmentButton 
-            isActive={tab === "yesterday"} 
-            onClick={() => setTab("yesterday")} 
-            label={yesterdayText} 
+          <SegmentButton
+            isActive={tab === "yesterday"}
+            onClick={() => setTab("yesterday")}
+            label={yesterdayText}
           />
         )}
+        <SegmentButton
+          isActive={tab === "weekly"}
+          onClick={() => setTab("weekly")}
+          label={weeklyLabel === "Earlier in the last 14 days" ? "Last 14 Days" : "Last 7 Days"}
+        />
       </div>
 
       {/* Content */}
@@ -56,6 +57,9 @@ export function TimeSegmentControl({
         {tab === "today" && (
           <div className="animate-fade-in-up">
             <SectionHeader title={todayLabel} count={todayStories.length} />
+            {todayNote && (
+              <p className="-mt-2 mb-5 text-[14px] text-apple-500 font-sans">{todayNote}</p>
+            )}
             {todayStories.length === 0 ? (
               <EmptyHint message="Nothing new in this window. Check back later." />
             ) : (

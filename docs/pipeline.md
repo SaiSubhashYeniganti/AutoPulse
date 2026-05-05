@@ -207,10 +207,10 @@ clusters never mix competitors.
 1. Load all hero story IDs that have appeared in any prior brief.
 2. Load stories from last 24h, ordered by `(importance DESC, published_at DESC)`.
 3. **Filter out any story whose ID appeared in a prior brief.**
-4. If fewer than `HERO_MIN_COUNT=3` *fresh-eligible* stories → widen
-   to 48h, then 72h. The widening is based on *fresh* count, not raw
-   count — a day where everything is "already shown" still triggers
-   the quiet flow.
+4. If there are zero *fresh-eligible* stories → widen to 48h, then
+   72h. If there is one eligible story in the normal 24h window, the
+   brief shows that one story and stops. The widening is based on eligible
+   hero stories, not raw story count.
 5. Select all HIGH stories and MED stories with a concrete Cars24 implication.
    There is no upper cap; weak MED stories without an implication stay in the
    archive instead of padding the CEO brief.

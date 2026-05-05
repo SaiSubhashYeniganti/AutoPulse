@@ -34,5 +34,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Local notes / demo prep
+docs/demo-script.md
+
 # Vercel
 .vercel

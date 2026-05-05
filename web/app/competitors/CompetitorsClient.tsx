@@ -136,21 +136,15 @@ function CompetitorDetail({
         )}
       </CompetitorSection>
 
-      <CompetitorSection
-        title={isCars24 ? "Press narratives" : "Strategic themes"}
-        count={quarterly?.themed_summary?.themes?.length ?? 0}
-        subtitle="Last 90 days"
-      >
-        {!quarterly ? (
-          <EmptyHint message={
-            totalCount === 0
-              ? "No 90-day coverage yet. Themes appear once stories accumulate."
-              : "Themes are still being built. Check back after the next pipeline run."
-          } />
-        ) : (
+      {quarterly && totalCount > 0 && (
+        <CompetitorSection
+          title={isCars24 ? "Press narratives" : "Strategic themes"}
+          count={quarterly.themed_summary?.themes?.length ?? 0}
+          subtitle="Last 90 days"
+        >
           <ThemedList summary={quarterly} />
-        )}
-      </CompetitorSection>
+        </CompetitorSection>
+      )}
 
       <CompetitorSection title="Archive (last 90 days)" count={archive.length}>
         {archive.length === 0 ? (

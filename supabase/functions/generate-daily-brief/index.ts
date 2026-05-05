@@ -44,10 +44,11 @@ import {
 } from "../_shared/supabase.ts";
 import { chatJson, costFor } from "../_shared/openai.ts";
 
-// Floor used by the dynamic-window expansion. The hero will try widening to
-// 48h then 72h if the 24h window has fewer than this many fresh stories.
+// Floor used by the dynamic-window expansion. This is intentionally fixed at 1:
+// if the 24h window has one eligible story, show that one story and stop. We
+// only widen to 48h/72h when the normal window would otherwise be empty.
 // There is NO upper cap — every HIGH and every MED-with-implication shows.
-const HERO_MIN_COUNT = parseInt(Deno.env.get("HERO_MIN_COUNT") ?? "3", 10);
+const HERO_MIN_COUNT = 1;
 // Floor for weekly recap. If fewer than this many HIGH stories exist in the
 // 7d window, top up with MED-with-implication to avoid an empty section.
 const WEEKLY_RECAP_MIN = parseInt(Deno.env.get("WEEKLY_RECAP_MIN") ?? "5", 10);
@@ -296,8 +297,8 @@ async function buildHero(
   for (const step of ladder) {
     chosen = step;
     pool = await fetchStoriesInWindow(supabase, step.hours, buckets, now);
-    const freshCount = pool.filter((s) => !previouslyShown.has(s.id)).length;
-    if (freshCount >= HERO_MIN_COUNT) break;
+    const eligibleCount = selectHero(pool, previouslyShown).length;
+    if (eligibleCount >= HERO_MIN_COUNT) break;
   }
 
   return {
