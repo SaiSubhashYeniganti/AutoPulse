@@ -1,6 +1,8 @@
-# Cars24 Brief
+# Auto Pulse
 
-A daily AI-powered intelligence brief on the Indian used-car market for Cars24's leadership team. Aggregates news from 10+ sources, deduplicates overlapping coverage, classifies for relevance, and ships a single 1-page brief that's readable in 2 minutes.
+A daily AI-powered intelligence brief on the Indian used-car market for the Cars24 leadership team. Pulls news from 10+ sources, dedupes overlapping coverage, classifies for relevance, and ships a single 1-page brief readable in 2 minutes.
+
+**Live:** [autopulseindia.vercel.app](https://autopulseindia.vercel.app)
 
 ```
 RSS / Google News
