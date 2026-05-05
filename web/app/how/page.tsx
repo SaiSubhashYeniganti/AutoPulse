@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export const metadata = {
   title: "How Auto Pulse works",
-  description: "A 2-minute read on what Auto Pulse does, how it works, and how it's built.",
+  description: "What Auto Pulse does, how it works, and how it's built.",
 };
 
 export default function HowPage() {
@@ -14,7 +14,7 @@ export default function HowPage() {
         </Link>
         <h1 className="mt-4 font-display text-4xl font-bold text-apple-800 tracking-tight">How Auto Pulse works</h1>
         <p className="mt-3 text-[16px] text-apple-500 font-sans">
-          A 2-minute read on what it does, how it works, and how it's built.
+          What it does, how it works, and how it's built.
         </p>
       </header>
 
@@ -36,12 +36,9 @@ export default function HowPage() {
             A Competitors tab to track each major player week-by-week and
             quarter-by-quarter.
           </p>
-          <p className="text-[16px] mt-4">
-            Read in 2 minutes. Close the tab.
-          </p>
         </Section>
 
-        <Section title="How it works (in plain English)">
+        <Section title="How it works">
           <Step
             n={1}
             title="Ingest"
@@ -85,8 +82,9 @@ export default function HowPage() {
         <Section title="What it's not">
           <ul className="space-y-3 text-[16px] text-apple-500 font-sans list-disc pl-5 marker:text-apple-400">
             <li>Not an aggregator. It's an opinionated edit — most ingested articles never surface.</li>
-            <li>No accounts, no personalization, no email digest. One URL, anyone with the link can read.</li>
-            <li>No mobile app. Web is the right shape for a one-page brief.</li>
+            <li>No login, no accounts, no personalization. One URL, anyone with the link can read.</li>
+            <li>No email digest, no push, no Slack bot. Pull beats push for a 2-minute morning read.</li>
+            <li>No user-tunable windows. Today, Yesterday, Last 7 Days, This Week, This Quarter — the windows are curated, not configurable.</li>
             <li>No padding. If today is genuinely quiet, the brief says so.</li>
           </ul>
         </Section>
