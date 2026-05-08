@@ -141,6 +141,18 @@ function CompetitorDetail({
         </p>
       </header>
 
+      <CompetitorSection title="This week" count={thisWeek.length}>
+        {thisWeek.length === 0 ? (
+          <EmptyHint message="No new coverage in the last 7 days." />
+        ) : (
+          <div>
+            {thisWeek.map((s, i) => (
+              <StoryRow key={s.id} story={{ ...s, story_id: s.id }} index={i} />
+            ))}
+          </div>
+        )}
+      </CompetitorSection>
+
       {/* ── Quarterly: TL;DR + ledger + patterns + Cars24 implications ── */}
       {quarterlySummary && totalCount > 0 && isLedger && (
         <QuarterlyLedger
@@ -159,18 +171,6 @@ function CompetitorDetail({
           <ThemedList summary={quarterlySummary as ThemedSummary} />
         </CompetitorSection>
       )}
-
-      <CompetitorSection title="This week" count={thisWeek.length}>
-        {thisWeek.length === 0 ? (
-          <EmptyHint message="No new coverage in the last 7 days." />
-        ) : (
-          <div>
-            {thisWeek.map((s, i) => (
-              <StoryRow key={s.id} story={{ ...s, story_id: s.id }} index={i} />
-            ))}
-          </div>
-        )}
-      </CompetitorSection>
 
       <CompetitorSection title="Archive (last 90 days)" count={archive.length}>
         {archive.length === 0 ? (
@@ -267,19 +267,11 @@ function QuarterlyLedger({
   const orderedGroups = EVENT_GROUP_ORDER.filter((g) => grouped[g]?.length);
 
   return (
-    <section className="mb-14">
-      <header className="border-b border-apple-300 pb-3 mb-6 flex items-baseline justify-between gap-4">
-        <h2 className="font-display text-2xl font-bold text-apple-800 tracking-tight">
-          {isCars24 ? "Press narrative" : "Quarter in review"}{" "}
-          <span className="font-mono text-[14px] font-medium text-apple-400 ml-2">
-            {summary.events.length} event{summary.events.length === 1 ? "" : "s"}
-          </span>
-        </h2>
-        <span className="text-[12px] uppercase tracking-widest text-apple-400 font-semibold">
-          Last 90 days
-        </span>
-      </header>
-
+    <CompetitorSection
+      title={isCars24 ? "Press narrative" : "Quarter in review"}
+      count={summary.events.length}
+      subtitle="Last 90 days"
+    >
       {/* TL;DR */}
       {summary.tldr && (
         <p className="text-[16px] leading-relaxed text-apple-800 font-sans mb-8 bg-apple-50 border-l-2 border-apple-blue px-5 py-4 rounded-r">
@@ -292,37 +284,32 @@ function QuarterlyLedger({
         <EmptyHint message="No material events logged in the last 90 days." />
       ) : (
         <div>
-          <h3 className="text-[12px] uppercase tracking-widest text-apple-400 font-semibold mb-4">
-            What they did
-          </h3>
-          <div className="space-y-7">
-            {orderedGroups.map((group) => (
-              <div key={group}>
-                <h4 className="font-display text-[15px] font-semibold text-apple-800 tracking-tight mb-2">
-                  {group}
-                </h4>
-                <ul className="space-y-2">
-                  {grouped[group].map((e, i) => (
-                    <EventRow
-                      key={`${e.story_id}-${i}`}
-                      event={e}
-                      link={storyLinks[e.story_id]}
-                    />
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          {orderedGroups.map((group, i) => (
+            <div key={group} className="py-6 border-b border-apple-100 last:border-b-0 animate-fade-in-up" style={{ animationDelay: `${i * 60}ms`, animationFillMode: 'both' }}>
+              <h3 className="font-display text-[18px] font-semibold text-apple-800 tracking-tight capitalize">
+                {group}
+              </h3>
+              <ul className="mt-4 space-y-3">
+                {grouped[group].map((e, j) => (
+                  <EventRow
+                    key={`${e.story_id}-${j}`}
+                    event={e}
+                    link={storyLinks[e.story_id]}
+                  />
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Patterns — only if any were detected */}
       {summary.patterns.length > 0 && (
-        <div className="mt-10">
-          <h3 className="text-[12px] uppercase tracking-widest text-apple-400 font-semibold mb-4">
+        <div className="mt-8 pt-8 border-t border-apple-300">
+          <h3 className="font-display text-[18px] font-semibold text-apple-800 tracking-tight mb-6">
             Patterns worth flagging
           </h3>
-          <ul className="space-y-4">
+          <ul className="space-y-6">
             {summary.patterns.map((p, i) => (
               <PatternRow
                 key={i}
@@ -336,24 +323,24 @@ function QuarterlyLedger({
 
       {/* Cars24 implications */}
       {!isCars24 && summary.cars24_implications.length > 0 && (
-        <div className="mt-10 border-t border-apple-200 pt-6">
-          <h3 className="text-[12px] uppercase tracking-widest text-apple-400 font-semibold mb-4">
+        <div className="mt-8 pt-8 border-t border-apple-300">
+          <h3 className="font-display text-[18px] font-semibold text-apple-800 tracking-tight mb-6">
             So what for Cars24
           </h3>
           <ul className="space-y-3">
             {summary.cars24_implications.map((line, i) => (
               <li
                 key={i}
-                className="text-[15px] leading-relaxed text-apple-800 font-sans flex items-start gap-3"
+                className="text-[15px] leading-relaxed text-apple-700 font-sans flex items-start gap-3"
               >
-                <span className="text-apple-blue mt-1 leading-none text-xl shrink-0">→</span>
+                <span className="text-apple-300 mt-1 leading-none text-xl shrink-0">•</span>
                 <span>{line}</span>
               </li>
             ))}
           </ul>
         </div>
       )}
-    </section>
+    </CompetitorSection>
   );
 }
 
@@ -366,26 +353,24 @@ function EventRow({
 }) {
   const date = formatEventDate(event.date);
   return (
-    <li className="text-[14.5px] leading-relaxed text-apple-700 font-sans flex items-start gap-3">
-      <span className="font-mono text-[12.5px] text-apple-400 mt-0.5 shrink-0 w-14">
-        {date}
-      </span>
-      <span className="flex-1">
+    <li className="text-[15px] leading-relaxed text-apple-700 font-sans flex items-start gap-3">
+      <span className="text-apple-300 mt-1 leading-none text-xl shrink-0">•</span>
+      <div>
+        <span className="font-medium text-apple-800 mr-2">
+          {date}
+        </span>
         {event.headline}
         {link?.url && (
-          <>
-            {" "}
-            <a
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[12.5px] text-apple-blue hover:text-apple-blueHover hover:underline transition-colors whitespace-nowrap"
-            >
-              {link.source ? `↗ ${link.source}` : "↗ source"}
-            </a>
-          </>
+          <a
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-apple-blue hover:text-apple-blueHover hover:underline transition-colors ml-2"
+          >
+            ↗ {link.source ?? "source"}
+          </a>
         )}
-      </span>
+      </div>
     </li>
   );
 }
@@ -402,12 +387,12 @@ function PatternRow({
       <h4 className="font-display text-[16px] font-semibold text-apple-800 tracking-tight">
         {pattern.title}
       </h4>
-      <p className="mt-1 text-[14.5px] leading-relaxed text-apple-700 font-sans">
+      <p className="mt-1 text-[15px] leading-relaxed text-apple-700 font-sans">
         {pattern.description}
       </p>
       {pattern.story_ids.length > 0 && (
-        <p className="mt-2 text-[12.5px] text-apple-500 font-sans flex flex-wrap gap-x-2 gap-y-1">
-          <span className="text-apple-400">Supporting events:</span>
+        <p className="mt-2 text-[13px] text-apple-500 font-sans flex flex-wrap gap-x-2 gap-y-1">
+          <span className="text-apple-400 font-medium">Supporting events:</span>
           {pattern.story_ids.map((id, i) => {
             const link = storyLinks[id];
             if (!link) return null;
@@ -420,7 +405,6 @@ function PatternRow({
                 className="text-apple-blue hover:text-apple-blueHover hover:underline transition-colors"
               >
                 ↗ {link.source ?? "source"}
-                {i < pattern.story_ids.length - 1 ? "" : ""}
               </a>
             ) : (
               <span key={id}>{link.title.slice(0, 40)}</span>
