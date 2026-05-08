@@ -30,12 +30,18 @@ operator) moves through the product end-to-end.
    - One row per competitor (Cars24, Spinny, CarDekho, Droom,
      OLX Autos), each with a 7-day sparkline and a 1-line context.
 5. They click Spinny's row to expand:
-   - **Last week** — 2-3 themed bullet groups (e.g. *Funding & investor
-     activity*, *Product moves*). Each bullet is a clickable link to
-     the underlying source articles.
-   - **Last quarter** — same shape, longer horizon. If sparse, an
-     honest banner: *"This quarter (filling in...) — only 4 sourced
-     stories so far."*
+   - **TL;DR** — 1–2 sentences on what materially changed about
+     Spinny in 90 days.
+   - **What they did** — exhaustive event ledger (every launch,
+     acquisition, funding, hire, expansion, partnership, regulatory
+     hit, pricing change), grouped by type, each with date + 1-line
+     description + link to source.
+   - **Patterns worth flagging** — only when ≥2 events trace a
+     coherent strategic thread; empty if no pattern exists.
+   - **So what for Cars24** — 0–4 quarter-level implications. Empty
+     if there isn't one worth saying.
+   - Below: **This week** (last 7 days) and a collapsed **Archive**
+     of the older 90-day stories.
 6. They scroll past the competitor strip to **Yesterday's Brief**:
    - Collapsed accordion. Click to expand. Shows the same hero shape
      from yesterday — useful before a Monday standup.

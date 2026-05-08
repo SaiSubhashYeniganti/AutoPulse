@@ -23,15 +23,19 @@ interface PageProps {
 export default async function CompetitorsPage({ searchParams }: PageProps) {
   const counts = await getCompetitorCounts90d();
 
-  const ranked = [...COMPETITORS].sort((a, b) => {
+  // Cars24 is always pinned at the bottom of the rail — it's "us, not them."
+  // Competitors above are sorted by 90-day story volume (most active first),
+  // which is what the reader wants to scan.
+  const competitorsOnly = COMPETITORS.filter((c) => c !== "Cars24").sort((a, b) => {
     const diff = (counts[b] ?? 0) - (counts[a] ?? 0);
     if (diff !== 0) return diff;
     return a.localeCompare(b);
   });
+  const ranked = [...competitorsOnly, "Cars24"];
 
   const selected = (searchParams?.c && ranked.includes(searchParams.c))
     ? searchParams.c
-    : (ranked[0] ?? "Spinny");
+    : (competitorsOnly[0] ?? "Spinny");
 
   const dataMap: Record<string, any> = {};
 
@@ -44,12 +48,24 @@ export default async function CompetitorsPage({ searchParams }: PageProps) {
       ]);
       
       const cutoff7d = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      // Build a story_id → source URL map so the quarterly event ledger can
+      // link each event back to its primary source article. Cheaper than a
+      // second fetch keyed on the event ids on the client.
+      const storyLinks: Record<string, { url: string | null; source: string | null; title: string }> = {};
+      for (const s of stories) {
+        storyLinks[s.id] = {
+          url: s.primary_source_url ?? null,
+          source: s.primary_source_name ?? null,
+          title: s.title,
+        };
+      }
       dataMap[c] = {
         thisWeek: stories.filter((s) => new Date(s.published_at).getTime() >= cutoff7d),
         archive: stories.filter((s) => new Date(s.published_at).getTime() < cutoff7d),
         weekly,
         quarterly,
         totalCount: stories.length,
+        storyLinks,
       };
     })
   );

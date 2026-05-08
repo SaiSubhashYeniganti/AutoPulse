@@ -25,8 +25,12 @@ clusters            (1..N articles per real-world event)
    │
 stories
    │
-   ├──► generate-daily-brief         → daily_briefs            (cached, served to UI)
-   └──► generate-competitor-summary  → competitor_summaries    (per competitor × week/quarter)
+   ├──► generate-daily-brief         → daily_briefs            (cached daily at 06:05 IST)
+   └──► generate-competitor-summary  → competitor_summaries    (06:15 IST):
+                                          • quarterly event ledger — daily refresh
+                                            (3-pass: extract events → patterns → TL;DR)
+                                          • weekly themed digest  — Mondays only,
+                                            previous Mon-Sun window
 ```
 
 ---

@@ -33,8 +33,9 @@ export default function HowPage() {
             One page, fresh every morning. The 4–6 stories from the Indian auto
             market that actually matter today, each with a one-line read on what it
             means for Cars24. A separate Cars24 tab for press about Cars24 itself.
-            A Competitors tab to track each major player week-by-week and
-            quarter-by-quarter.
+            A Competitors tab with a quarter-in-review for each player —
+            exhaustive event ledger, narrative patterns, and Cars24 implications —
+            plus a Mon-Sun weekly digest.
           </p>
         </Section>
 
@@ -62,7 +63,12 @@ export default function HowPage() {
           <Step
             n={5}
             title="Compose the brief"
-            body="Once a day at 06:05 IST we pick the stories worth surfacing, decide the time window (24h, widening to 48h or 72h on quiet days), and cache the result. Every page load reads from that cached row."
+            body="Once a day at 06:05 IST we pick the stories worth surfacing from a fixed 24-hour window (yesterday 06:05 IST → today 06:05 IST) and cache the result. The window is anchored to the date, not to wall-clock now, so re-runs are reproducible rather than shifting the window. Every page load reads from the cached row. If today is genuinely quiet, the Today segment shows so honestly — the Yesterday and Last 7 Days segments are right there in the same tab."
+          />
+          <Step
+            n={6}
+            title="Compose the competitor view"
+            body="At 06:15 IST we build a quarter-in-review per competitor in three LLM passes: extract every material event from the last 90 days into a structured ledger (launch / acquisition / funding / hire / expansion / partnership / regulatory / pricing), detect narrative patterns across ≥2 events when they exist, then write the TL;DR and Cars24 implications. The weekly themed digest runs once a week on Monday for the previous Mon-Sun window."
           />
         </Section>
 
@@ -73,7 +79,7 @@ export default function HowPage() {
               <Row label="Backend"    value="Supabase Edge Functions — 7 small TypeScript services, ~2,400 lines total." />
               <Row label="Database"   value="Supabase Postgres with pgvector for similarity search. 7 tables." />
               <Row label="Models"     value="GPT-4o for classification & synthesis. text-embedding-3-small for clustering." />
-              <Row label="Scheduling" value="pg_cron inside Supabase. Daily brief at 06:05 IST; competitor rollups at 06:15 IST." />
+              <Row label="Scheduling" value="pg_cron inside Supabase. Daily brief at 06:05 IST. Competitor view at 06:15 IST: quarterly event ledger refreshes daily; weekly digest fires only on Mondays for the previous Mon–Sun window." />
               <Row label="Cost"       value="Roughly $10–15/month in OpenAI usage at current volume. Vercel + Supabase on free tiers." />
             </tbody>
           </table>
@@ -85,7 +91,7 @@ export default function HowPage() {
             <li>No login, no accounts, no personalization. One URL, anyone with the link can read.</li>
             <li>No email digest, no push, no Slack bot. Pull beats push for a 2-minute morning read.</li>
             <li>No user-tunable windows. Today, Yesterday, Last 7 Days, This Week, This Quarter — the windows are curated, not configurable.</li>
-            <li>No padding. If today is genuinely quiet, the brief says so.</li>
+            <li>No padding and no quiet-day stretch. The Today window is a strict 24 hours; if nothing material happened, the brief says so plainly instead of resurfacing yesterday's news under a "today" header.</li>
           </ul>
         </Section>
 

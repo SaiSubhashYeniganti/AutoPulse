@@ -53,7 +53,7 @@ For each story:
 
 The Feed tab has three time segments: **Today**, **Yesterday**, and **Last 7 Days**.
 
-**Quiet-day handling.** If the 24h window has no fresh, eligible stories, the window auto-widens to 48h, then 72h, pulling in stories the reader has not seen in a prior brief. If there is one strong story, we show one story. No filler.
+**Quiet-day handling.** The window is a strict 24h. If nothing fresh and eligible came in overnight, the Today segment shows an honest empty state ("Nothing new in this window. Check back later.") and the reader falls back to the **Yesterday** or **Last 7 Days** segments inside the same Feed tab. We deliberately do *not* widen to 48h/72h — re-surfacing day-old stories under a "today" header is misleading, and yesterday's hero is one click away in the Yesterday segment.
 
 ### 3.1a Feed — Cars24 sub-tab
 
@@ -61,12 +61,16 @@ External press about Cars24 lives in its own sub-tab inside Feed. Different read
 
 ### 3.2 Competitor Pulse
 
-One row per major competitor: Cars24, Spinny, CarDekho, Droom, OLX Autos.
+One row per major competitor in the left rail: Spinny, CarDekho, Droom, OLX Autos. **Cars24 is pinned at the bottom** — it's "us, not them," and the rail is for scanning competitors first.
 
-- A 7-day sparkline (story volume) and a 1-line context (*"Funding driving 250% mention spike"*, or *"Quiet week — usual product chatter"*).
-- Click a row to expand. Inside, two views:
-  - **Last week** — themed bullets (e.g. *Funding & investor activity* → 3 bullets → each bullet links to its source articles).
-  - **Last quarter** — same shape, longer horizon. When sparse, the UI says so plainly: *"This quarter (filling in...) — only 4 sourced stories so far."*
+The right pane is a quarter-in-review brief, designed to read like an analyst handed it to the CEO. Top-to-bottom:
+
+1. **TL;DR** — 1–2 sentences. What materially changed about this competitor in 90 days.
+2. **What they did** — an exhaustive event ledger. Every material event the competitor logged in the last 90 days, with date and 1-line description, grouped by event type (funding, product, expansion, people, partnerships, regulatory, pricing, restructuring, other). Each row links back to the source story. The ledger is *not* abstracted into themes — three product launches show up as three rows, never as "active product cadence."
+3. **Patterns worth flagging** — only when ≥2 events form a coherent strategic thread (e.g. *"Aggressive financing push: acquisition + 2 lending partnerships in 60 days"*). When no pattern exists, this section is empty. We don't pad.
+4. **So what for Cars24** — 0–4 quarter-level implications, concrete and actionable. Empty if there isn't one worth saying.
+
+Below the brief, **This week** lists the last 7 days of stories, and **Archive** holds the older 90-day stories one click away.
 
 ### 3.3 Yesterday + Last 7 Days
 
@@ -109,15 +113,18 @@ For each cluster (= group of articles about one event), GPT-4o reads all the mem
 Source articles are kept, attributed, and linked.
 
 ### Step 5 — **Generate the daily brief**
-Once a day at 06:05 IST, after the latest source data is ready, we pick stories by importance + recency, decide the time window (24/48/72h based on volume), and cache the result. Every page load reads from this cached row.
+Once a day at 06:05 IST, after the latest source data is ready, we pick stories by importance + recency from a 24h window anchored to the brief_date — `(brief_date − 1) 06:05 IST → brief_date 06:05 IST`. The window is deterministic, so re-runs of the function produce the same answer rather than sliding forward. Every page load reads from the cached row.
 
 ### Step 6 — **Generate competitor summaries**
 At 06:15 IST, using the same fresh morning dataset, for each competitor we generate:
-- A weekly themed summary (the underlying stories are linked).
-- A quarterly themed summary (or a "filling in" message if shallow).
+- A **quarterly event ledger** (raw 90-day stories → exhaustive event ledger + patterns + Cars24 implications). Three LLM passes, recomputed daily so the 90-day window stays current. *Reads from raw stories every time — never from compressed weekly rollups.*
+- A **weekly themed digest** (last completed Mon→Sun) — but only on Mondays. On other days the weekly job is a no-op. The weekly is a leaf-node artifact: nothing else reads it.
+
+### Why no "rollup of rollups"
+We deliberately do *not* build the quarterly from weekly summaries. A weekly digest compresses ~5 stories into ~3 themed bullets — losing dates, named products, deal sizes, named cities. Once that compression has happened, the quarterly LLM can never recover the detail no matter how good its prompt is. So the quarterly always reads ground truth (raw stories), and the weekly is output-only.
 
 ### A note on quarterly depth
-Quarterly competitor depth is built up organically from the live RSS feeds. Until ~30+ days of history exist, the quarterly view shows an honest "filling in" message rather than padding with weak data.
+Quarterly depth is built up organically from the live RSS feeds. Until ~30+ days of history exist, the event ledger may be thin — that's surfaced honestly rather than padded with weak narrative.
 
 ---
 
@@ -129,8 +136,8 @@ Quarterly competitor depth is built up organically from the live RSS feeds. Unti
 | 1 line "what this means for Cars24" | The 4-bucket classifier, the importance score, the LLM reasoning |
 | *"ET Auto + 3 others"* attribution | The full cluster of 4 articles, all dedupe-traced |
 | *"Read at [source] →"* link | The original URL + full source name |
-| *"Quiet last 24h — showing since Friday"* | The dynamic 24h → 48h → 72h fallback |
-| *"Filling in..."* on quarterly | The honest empty-state guard |
+| *"Nothing new in this window."* on a quiet morning | The strict 24h gate — we never quietly resurface day-old stories under a "today" header |
+| Honest empty event ledger when a competitor was quiet | The exhaustive-extraction prompt that refuses to invent themes |
 | A single ranked Feed (no section headers) | Every story has been routed through 4-bucket classification under the hood; the bucket decides which tab/lane it lands in |
 
 The product is mostly the iceberg under the waterline. The 1-page brief is what surfaces.

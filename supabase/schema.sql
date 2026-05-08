@@ -206,11 +206,13 @@ create table if not exists daily_briefs (
   id                  uuid primary key default gen_random_uuid(),
   brief_date          date not null unique,
 
-  -- ── Today (last 24h, can widen to 48/72h on quiet days) ────────────────────
-  -- hero_stories: MARKET + COMPETITOR buckets only. Self-coverage of Cars24
-  --   is suppressed here so the operator's feed isn't polluted by own PR.
-  -- hero_cars24:  CARS24_PRESS + CARS24_PR — anything that mentions Cars24.
-  --   Lives behind the "Cars24" sub-tab on the feed page.
+  -- ── Today ─────────────────────────────────────────────────────────────────
+  -- hero_stories: MARKET + COMPETITOR buckets only, strict 24h window
+  --   (post-2026-05; older rows may have window_hours of 48 or 72 from the
+  --   legacy auto-widen). Self-coverage of Cars24 is suppressed here so the
+  --   operator's feed isn't polluted by own PR.
+  -- hero_cars24:  CARS24_PRESS + CARS24_PR, 14d window — anything that
+  --   mentions Cars24. Lives behind the "Cars24" sub-tab on the feed page.
   hero_stories        jsonb not null,
   hero_cars24         jsonb not null default '[]'::jsonb,
 
@@ -226,10 +228,11 @@ create table if not exists daily_briefs (
   -- Shape: [{story_id, title, source_count, latest_update_at, days_running}]
   still_developing    jsonb not null default '[]'::jsonb,
 
-  -- The window we ended up using (24, 48, or 72)
+  -- The window we used. Strict 24 for the market+competitor lane post-2026-05;
+  -- older rows may carry 48 or 72 from the legacy auto-widen logic.
   window_hours        int not null,
   is_quiet_day        boolean not null default false,
-  quiet_day_note      text,                              -- e.g. "Quiet last 24h — showing since Friday"
+  quiet_day_note      text,                              -- legacy column; new briefs leave this null
 
   -- Competitor pulse: per-competitor sparkline data
   -- Shape: [{competitor, story_count_7d, story_count_prev_7d, sparkline_daily, context_line}, ...]
@@ -250,7 +253,7 @@ alter table daily_briefs add column if not exists weekly_cars24 jsonb not null d
 create index if not exists idx_daily_briefs_brief_date on daily_briefs (brief_date desc);
 
 -- ---------------------------------------------------------------------------
--- 6. competitor_summaries — weekly + quarterly per-competitor synthesized views
+-- 6. competitor_summaries — per-competitor weekly digest + quarterly ledger
 -- ---------------------------------------------------------------------------
 
 create table if not exists competitor_summaries (
@@ -260,10 +263,19 @@ create table if not exists competitor_summaries (
   period_start    date not null,
   period_end      date not null,
 
-  -- For sparkline strip (1-line context, e.g. "Funding driving 250% mention spike")
+  -- 1-line context. For weekly: "Funding driving 250% mention spike."
+  -- For quarterly: the same sentence as themed_summary.tldr.
   context_line    text,
 
-  -- Themed synthesis: {themes: [{title, bullets: [...], story_ids: [...]}], total_stories: N}
+  -- Two shapes share this column, discriminated by scope:
+  --   scope='week'    — themed digest of previous Mon-Sun window:
+  --                     {context_line, themes: [{title, bullets, story_ids}]}
+  --   scope='quarter' — exhaustive event ledger over 90 days:
+  --                     {tldr, events: [{date, type, headline, story_id}],
+  --                      patterns: [{title, description, story_ids}],
+  --                      cars24_implications: [string]}
+  -- The web client runtime-discriminates with Array.isArray(themed_summary.events).
+  -- See generate-competitor-summary/index.ts.
   themed_summary  jsonb not null,
 
   story_count     int not null,
@@ -455,4 +467,4 @@ comment on table articles is 'Raw ingested articles, enriched by classifier + em
 comment on table clusters is 'Groups of articles covering the same real-world event.';
 comment on table stories is 'Synthesized editorial stories (one per cluster). The unit served to the UI.';
 comment on table daily_briefs is 'Cached daily brief output, served by the website.';
-comment on table competitor_summaries is 'Per-competitor weekly + quarterly themed summaries.';
+comment on table competitor_summaries is 'Per-competitor outputs: weekly themed digest (Mon-Sun, runs Mondays only) + quarterly event ledger (90-day window, daily refresh from raw stories).';

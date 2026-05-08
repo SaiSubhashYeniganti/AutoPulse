@@ -71,7 +71,14 @@ Total LOC of Edge Functions: **~2,408** across 7 functions.
                     ┌────────────────────────────────────────────────┐
                     │  generate-daily-brief         (every day 00:35 │
                     │  generate-competitor-summary   UTC / 00:45 UTC) │
-                    │  - rank, window-decide (24/48/72h)             │
+                    │  - daily brief: 24h window anchored to         │
+                    │    brief_date (prev 06:05 IST → 06:05 IST),    │
+                    │    not "last 24h from now"; empty = empty      │
+                    │    (no widening to 48h/72h)                    │
+                    │  - quarterly event ledger: 3-pass extract +    │
+                    │    pattern + TL;DR (raw stories, daily refresh)│
+                    │  - weekly themed digest: gated to Mondays only │
+                    │    for previous Mon→Sun window                 │
                     │  - cache to daily_briefs / competitor_summaries│
                     └────────────────────┬───────────────────────────┘
                                          ▼
@@ -89,7 +96,8 @@ Total LOC of Edge Functions: **~2,408** across 7 functions.
 ## Data flow in one sentence
 
 > RSS → classify per article → embed → cluster (vector top-K + LLM
-> judge) → synthesize cluster → cache daily/weekly/quarterly views →
+> judge) → synthesize cluster → cache daily brief + per-competitor
+> quarterly event ledger (daily) and weekly digest (Mondays only) →
 > SSR-render page.
 
 ---

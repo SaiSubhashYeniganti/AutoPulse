@@ -50,18 +50,6 @@ export interface HeroStory {
   published_at: string;
 }
 
-export interface StillDevelopingItem {
-  story_id: string;
-  cluster_id: string;
-  title: string;
-  primary_competitor: string | null;
-  bucket: string;
-  source_count: number;
-  latest_update_at: string;
-  days_running: number;
-  first_seen_in_brief: string;
-}
-
 export interface CompetitorPulseRow {
   competitor: string;
   story_count_7d: number;
@@ -75,15 +63,18 @@ export interface CompetitorPulseRow {
 export interface DailyBrief {
   id: string;
   brief_date: string;
-  // ── Today (last 24-72h) — Market & Competitors lane (default Feed sub-tab)
+  // ── Today (strict last 24h) — Market & Competitors lane (default Feed sub-tab)
   hero_stories: HeroStory[];
   // ── Today — Cars24 mentions lane (Cars24 sub-tab)
   hero_cars24: HeroStory[];
   // ── This week (last 7d, HIGH-only or count-cap) — same two lanes
   weekly_recap: HeroStory[];
   weekly_cars24: HeroStory[];
-  // ── Previously-shown stories with new activity in their cluster
-  still_developing: StillDevelopingItem[];
+  // NOTE: daily_briefs.still_developing is still written by the pipeline (a
+  // list of previously-shown stories whose cluster has new activity since we
+  // last surfaced them) — see supabase/functions/generate-daily-brief — but
+  // no UI consumes it today, so we don't expose it on this type. If we want
+  // to surface it later, re-add the field + a StillDevelopingItem interface.
   window_hours: number;
   is_quiet_day: boolean;
   quiet_day_note: string | null;
@@ -93,9 +84,62 @@ export interface DailyBrief {
   generated_at: string;
 }
 
+// ── Themed summary (weekly) ──────────────────────────────────────────────────
+// Shape used by the weekly rollup. Stays the same — weeklies are an editorial
+// digest of one Mon-Sun window, grouped into 2-4 themes with bullets.
 export interface ThemedSummary {
   context_line: string;
   themes: Array<{ title: string; bullets: string[]; story_ids?: string[] }>;
+}
+
+// ── Event ledger summary (quarterly) ─────────────────────────────────────────
+// Shape used by the quarterly view. The reader's mental model is:
+//   1. TL;DR — what changed about this competitor in 90 days, in 1-2 lines.
+//   2. Events — every material thing they did (launch, acquisition, funding,
+//      hire, expansion, etc.). Grouped by type, but exhaustive — never
+//      abstracted into a theme that drops detail.
+//   3. Patterns — narrative arcs we spotted across multiple events. Optional,
+//      empty if no genuine pattern exists.
+//   4. Cars24 implications — quarter-level "so what."
+export type EventType =
+  | "funding"
+  | "acquisition"
+  | "product"
+  | "expansion"
+  | "hire"
+  | "departure"
+  | "partnership"
+  | "regulatory"
+  | "layoff"
+  | "pricing"
+  | "other";
+
+export interface LedgerEvent {
+  date: string; // ISO date (YYYY-MM-DD)
+  type: EventType;
+  headline: string; // 1-line factual description, name+date inline
+  story_id: string;
+}
+
+export interface LedgerPattern {
+  title: string; // 4-8 words, e.g. "Aggressive financing push"
+  description: string; // 1-2 sentences, what the pattern is
+  story_ids: string[]; // supporting events
+}
+
+export interface EventLedgerSummary {
+  tldr: string; // 1-2 sentences. The headline of the quarter.
+  events: LedgerEvent[]; // exhaustive ledger, sorted by date desc
+  patterns: LedgerPattern[]; // 0-N. Empty if nothing patterns out.
+  cars24_implications: string[]; // 0-4 quarter-level "so what" lines
+}
+
+// Stored summary union — weekly rows carry `themes`, quarterly rows carry the
+// event ledger shape. The DB column is jsonb either way.
+export type StoredSummary = ThemedSummary | EventLedgerSummary;
+
+export function isEventLedger(s: StoredSummary): s is EventLedgerSummary {
+  return Array.isArray((s as EventLedgerSummary).events);
 }
 
 export interface CompetitorSummary {
@@ -105,7 +149,7 @@ export interface CompetitorSummary {
   period_start: string;
   period_end: string;
   context_line: string | null;
-  themed_summary: ThemedSummary;
+  themed_summary: StoredSummary;
   story_count: number;
   generated_at: string;
 }

@@ -51,17 +51,9 @@ export default async function Page() {
 
   const yesterdayHero = yesterday?.hero_stories ?? [];
 
-  const quietNote =
-    today.is_quiet_day && today.window_hours && today.window_hours > 24
-      ? heroMarket.length > 0
-        ? `No fresh stories in the normal 24-hour window. Showing recent unshown stories from the last ${Math.round(today.window_hours / 24)} days.`
-        : "No fresh stories in the normal 24-hour window."
-      : null;
-
   const marketPane = (
     <TimeSegmentControl
       todayLabel="Today"
-      todayNote={quietNote}
       todayStories={heroMarket}
       weeklyStories={weeklyMarket}
       yesterdayStories={yesterdayHero}

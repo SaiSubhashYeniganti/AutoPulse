@@ -3,8 +3,12 @@
 // =============================================================================
 // Assembles a single daily_briefs row served by the website. Five pieces:
 //
-//   1. hero_stories  — Today (24h primary, widens to 48h/72h on a quiet day),
-//                      MARKET + COMPETITOR buckets. Selection rule:
+//   1. hero_stories  — Today, MARKET + COMPETITOR buckets. Anchored 24h
+//                      window per brief_date — lower bound = (brief_date − 1)
+//                      06:05 IST, upper bound = brief_date 06:05 IST. The
+//                      window does NOT slide with wall-clock now (see handler
+//                      comments below). No auto-widening to 48h/72h. Selection
+//                      rule:
 //                        • All HIGH-importance stories
 //                        • All MED-importance stories that have a non-null
 //                          cars24_implication (we don't include MED without
@@ -14,8 +18,9 @@
 //                      prior day is excluded.
 //
 //   2. hero_cars24   — Today, CARS24_PRESS + CARS24_PR buckets. Same selection
-//                      rule. Lane uses a 14d primary window because Cars24
-//                      self-coverage is naturally sparser than market news.
+//                      rule. Lane uses a 14d trailing window from the upper
+//                      bound because Cars24 self-coverage is naturally sparser
+//                      than market news.
 //
 //   3. weekly_recap  — Last 7d, MARKET + COMPETITOR. Selection rule:
 //                        • All HIGH stories
@@ -44,11 +49,10 @@ import {
 } from "../_shared/supabase.ts";
 import { chatJson, costFor } from "../_shared/openai.ts";
 
-// Floor used by the dynamic-window expansion. This is intentionally fixed at 1:
-// if the 24h window has one eligible story, show that one story and stop. We
-// only widen to 48h/72h when the normal window would otherwise be empty.
-// There is NO upper cap — every HIGH and every MED-with-implication shows.
-const HERO_MIN_COUNT = 1;
+// No upper cap on the hero list — every HIGH story and every MED-with-implication
+// in the 24h window shows. If the window is empty the UI renders an honest
+// empty state and the reader falls back to the Yesterday or Last 7 Days
+// segments inside the same Feed tab.
 // Floor for weekly recap. If fewer than this many HIGH stories exist in the
 // 7d window, top up with MED-with-implication to avoid an empty section.
 const WEEKLY_RECAP_MIN = parseInt(Deno.env.get("WEEKLY_RECAP_MIN") ?? "5", 10);
@@ -133,18 +137,16 @@ interface CompetitorPulse {
 
 async function fetchStoriesInWindow(
   supabase: ReturnType<typeof getSupabaseClient>,
-  hours: number,
+  windowStart: Date,
+  windowEnd: Date,
   buckets: string[],
-  now: Date,
   importance: string[] = ["HIGH", "MED"],
 ): Promise<StoryRow[]> {
-  const cutoff = new Date(now.getTime() - hours * 60 * 60 * 1000).toISOString();
-  const upper = now.toISOString();
   let query = supabase
     .from("stories")
     .select("*")
-    .gte("published_at", cutoff)
-    .lte("published_at", upper)
+    .gte("published_at", windowStart.toISOString())
+    .lte("published_at", windowEnd.toISOString())
     .in("importance", importance)
     .in("bucket", buckets);
   const { data, error } = await query
@@ -196,7 +198,7 @@ async function fetchPreviouslyShownStoryIds(
 //     spot in a 2-minute CEO brief.
 //   - Strict no-repeat: any story_id from any prior brief is excluded.
 //   - No upper cap. If today is heavy, we show all of it; if today is quiet,
-//     the dynamic window expansion in buildHero will widen the lookback.
+//     the lane is empty and the reader falls back to Yesterday / Last 7 Days.
 function selectHero(
   stories: StoryRow[],
   previouslyShown: Set<string>,
@@ -263,16 +265,15 @@ function projectStory(s: StoryRow) {
   };
 }
 
-// Build hero with dynamic window expansion. Returns the chosen pool, hero, and
-// the window stats so the caller can record quiet-day metadata.
-//
-// The Cars24 lane uses a fixed 14d window because Cars24 self-coverage is
-// naturally sparser than market news; a 24h window keeps that tab perpetually
-// empty, but a 90d window belongs in the archive, not the daily feed.
+// Build the hero list for one lane.
+// - Market+competitor: anchored 24h (briefAnchor → windowEnd). No widening
+//   on quiet days; we'd otherwise resurface yesterday's news under "Today."
+// - Cars24: 14d trailing from windowEnd. Self-coverage is too sparse for 24h.
 async function buildHero(
   supabase: ReturnType<typeof getSupabaseClient>,
   buckets: string[],
-  now: Date,
+  briefAnchor: Date,        // brief_date 06:05 IST = 00:35 UTC
+  windowEnd: Date,          // min(wall-clock now, briefAnchor + 24h)
   previouslyShown: Set<string>,
 ): Promise<{
   hero: StoryRow[];
@@ -282,31 +283,33 @@ async function buildHero(
   quietNote: string | null;
 }> {
   const isCars24Lane = buckets.every((b) => b.startsWith("CARS24_"));
-  const ladder = isCars24Lane
-    ? [
-      { hours: 24 * 14, isQuiet: false, note: null },
-    ]
-    : [
-      { hours: 24, isQuiet: false, note: null },
-      { hours: 48, isQuiet: true, note: "Quiet last 24 hours. Showing the last 48." },
-      { hours: 72, isQuiet: true, note: "Quiet stretch. Showing the last 72 hours." },
-    ];
+  const windowHours = isCars24Lane ? 24 * 14 : 24;
+  // Cars24 lane uses a 14d trailing window anchored to windowEnd (because
+  // self-coverage is sparse). Market+competitor lane is anchored to the
+  // brief_date 06:05 IST lower bound — fixed for the day.
+  const windowStart = isCars24Lane
+    ? new Date(windowEnd.getTime() - windowHours * 60 * 60 * 1000)
+    : briefAnchor;
 
-  let pool: StoryRow[] = [];
-  let chosen = ladder[0];
-  for (const step of ladder) {
-    chosen = step;
-    pool = await fetchStoriesInWindow(supabase, step.hours, buckets, now);
-    const eligibleCount = selectHero(pool, previouslyShown).length;
-    if (eligibleCount >= HERO_MIN_COUNT) break;
-  }
+  const pool = await fetchStoriesInWindow(
+    supabase,
+    windowStart,
+    windowEnd,
+    buckets,
+  );
+  const hero = selectHero(pool, previouslyShown);
+
+  // "Quiet day" now means literally: zero eligible hero stories in the window.
+  // No banner copy — the UI shows an honest empty state and points to
+  // Yesterday / Last 7 Days segments instead.
+  const isQuiet = !isCars24Lane && hero.length === 0;
 
   return {
-    hero: selectHero(pool, previouslyShown),
+    hero,
     pool,
-    windowHours: chosen.hours,
-    isQuiet: chosen.isQuiet,
-    quietNote: chosen.note,
+    windowHours,
+    isQuiet,
+    quietNote: null,
   };
 }
 
@@ -508,11 +511,36 @@ Deno.serve(async (req) => {
       /* empty */
     }
 
-    // brief_date  → which row to upsert (YYYY-MM-DD).
-    // as_of       → the "now" anchor for window calculations. Defaults to actual now;
-    //               override to backdate a brief (e.g. for demo: yesterday at 6pm).
-    const briefDate = body.brief_date ?? new Date().toISOString().slice(0, 10);
-    const now = body.as_of ? new Date(body.as_of) : new Date();
+    // Window is anchored to brief_date, not wall-clock, so re-runs are
+    // idempotent. For brief_date d (IST):
+    //   lower bound = (d - 1) 06:05 IST  ── fixed
+    //   upper bound = min(wall, d 06:05 IST) ── monotonic, capped at the seal
+    // Manual re-runs after the seal target tomorrow's brief instead of
+    // overwriting a sealed row with a slid window (the previous bug).
+    //
+    // Body: brief_date (YYYY-MM-DD, IST) and as_of (debug override).
+    const wall = body.as_of ? new Date(body.as_of) : new Date();
+
+    // Default brief_date = the next 06:05 IST seal at or after wall.
+    let briefDate: string;
+    if (body.brief_date) {
+      briefDate = body.brief_date;
+    } else {
+      const wallMs = wall.getTime();
+      const wallUtcDate = new Date(wallMs).toISOString().slice(0, 10);
+      const todaySealUtc = new Date(`${wallUtcDate}T00:35:00Z`).getTime();
+      briefDate = wallMs <= todaySealUtc
+        ? wallUtcDate
+        : new Date(todaySealUtc + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    }
+
+    const briefSealUtc = new Date(`${briefDate}T00:35:00Z`);
+    const briefAnchorUtc = new Date(
+      briefSealUtc.getTime() - 24 * 60 * 60 * 1000,
+    );
+    const windowEnd = wall.getTime() < briefSealUtc.getTime()
+      ? wall
+      : briefSealUtc;
 
     // ── Load previously-shown story IDs (across BOTH hero lanes).
     const { ids: previouslyShown, firstSeen } = await fetchPreviouslyShownStoryIds(
@@ -521,20 +549,22 @@ Deno.serve(async (req) => {
     );
 
     // ── Lane 1: Today — Market & Competitors (default Feed tab) ───────────────
+    // Anchored 24h window: briefAnchor (06:05 IST) → windowEnd.
     const market = await buildHero(
       supabase,
       MARKET_COMPETITOR_BUCKETS,
-      now,
+      briefAnchorUtc,
+      windowEnd,
       previouslyShown,
     );
 
     // ── Lane 2: Today — Cars24 (sub-tab on Feed) ──────────────────────────────
-    // Independent window expansion; Cars24 self-coverage is rarer so this can
-    // legitimately be empty even on a busy market day.
+    // 14d trailing window from windowEnd because Cars24 self-coverage is sparse.
     const cars24 = await buildHero(
       supabase,
       CARS24_BUCKETS,
-      now,
+      briefAnchorUtc,
+      windowEnd,
       previouslyShown,
     );
 
@@ -546,20 +576,26 @@ Deno.serve(async (req) => {
       ...cars24.hero.map((s) => s.cluster_id),
     ]);
 
-    // Market+competitor weekly: standard 7-day window.
+    // Weekly recap windows are trailing from windowEnd: 7d for market, 14d for
+    // Cars24. These are intentionally wall-relative (not anchored to brief_date)
+    // because "this week" is meant to be a rolling recap, not a frozen window.
+    const weekStart = new Date(windowEnd.getTime() - 24 * 7 * 60 * 60 * 1000);
+    const cars24WeekStart = new Date(
+      windowEnd.getTime() - 24 * 14 * 60 * 60 * 1000,
+    );
     const weekMarketPool = await fetchStoriesInWindow(
       supabase,
-      24 * 7,
+      weekStart,
+      windowEnd,
       MARKET_COMPETITOR_BUCKETS,
-      now,
     );
     // Cars24 weekly uses the same 14-day window as the Cars24 lane. The full
     // 90-day Cars24 archive lives at /feed/week?tab=cars24.
     const weekCars24Pool = await fetchStoriesInWindow(
       supabase,
-      24 * 14,
+      cars24WeekStart,
+      windowEnd,
       CARS24_BUCKETS,
-      now,
     );
     const weeklyRecap = selectWeekly(weekMarketPool, todayClusterIds);
     const weeklyCars24 = selectWeekly(weekCars24Pool, todayClusterIds);
@@ -578,8 +614,13 @@ Deno.serve(async (req) => {
     const competitorPulse: CompetitorPulse[] = [];
 
     for (const competitor of COMPETITORS) {
-      const last14d = await fetchCompetitorStories(supabase, competitor, 14, now);
-      const cutoff7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      const last14d = await fetchCompetitorStories(
+        supabase,
+        competitor,
+        14,
+        windowEnd,
+      );
+      const cutoff7d = new Date(windowEnd.getTime() - 7 * 24 * 60 * 60 * 1000)
         .toISOString();
       const last7d = last14d.filter((s) => s.published_at >= cutoff7d);
       const prev7d = last14d.filter((s) => s.published_at < cutoff7d);
@@ -591,7 +632,7 @@ Deno.serve(async (req) => {
       const sparkline = buildSparkline(
         last14d.filter((s) => s.published_at >= cutoff7d),
         7,
-        now,
+        windowEnd,
       );
 
       const { line, cost } = await generateContextLine(competitor, last7d);

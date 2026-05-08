@@ -194,7 +194,7 @@ Cached output of `generate-daily-brief`. One row per `brief_date`.
 | `brief_date` | date UNIQUE | Used as the read key |
 | `hero_stories` | jsonb NOT NULL | Stories that have NEVER appeared in any prior brief. Strict no-repeat. |
 | `still_developing` | jsonb NOT NULL DEFAULT `[]` | Compact one-liners for previously-shown stories whose cluster has had new article activity since the last brief that featured them. Shape: `[{story_id, cluster_id, title, primary_competitor, bucket, source_count, latest_update_at, days_running, first_seen_in_brief}]` |
-| `window_hours` | int NOT NULL | 24, 48, or 72 (auto-widens when fresh-eligible count is low) |
+| `window_hours` | int NOT NULL | Always 24 for the market+competitor lane (strict; no auto-widen). The 24h window is *anchored* to `brief_date`: lower bound = `(brief_date − 1) 06:05 IST`, upper bound = `brief_date 06:05 IST`. Reruns during the day don't slide the window — see `pipeline.md §5` and `decisions.md #21`. 336 (=14d) for the Cars24 self-press lane, recorded on a separate `cars24_window_hours` field added later. Older rows from before 2026-05 may have 48 or 72 from the legacy widening logic. |
 | `is_quiet_day` / `quiet_day_note` | bool / text | UI banner copy |
 | `competitor_pulse` | jsonb | Per-competitor sparkline data |
 | `total_stories_in_window` | int | Footer transparency |
@@ -216,8 +216,8 @@ Cached output of `generate-competitor-summary`. One row per
 | `scope` | text CHECK in ('week','quarter') | |
 | `period_start` / `period_end` | date | |
 | `context_line` | text | "Funding driving 250% mention spike" — for sparkline strip |
-| `themed_summary` | jsonb NOT NULL | `{themes: [{title, bullets, story_ids}], total_stories: N}` |
-| `story_count` | int NOT NULL | Underlying story count (not weekly count) |
+| `themed_summary` | jsonb NOT NULL | One of two shapes, depending on `scope`. **Weekly:** `{context_line, themes: [{title, bullets, story_ids}]}`. **Quarterly:** `{tldr, events: [{date, type, headline, story_id}], patterns: [{title, description, story_ids}], cars24_implications: [string]}`. The UI runtime-checks `Array.isArray(events)` to discriminate; older quarterly rows in the themed shape still render via a backwards-compat path. |
+| `story_count` | int NOT NULL | Underlying story count |
 | `generated_at` | tz | |
 | **UNIQUE** `(competitor, scope, period_end)` | | Idempotent upserts |
 

@@ -22,6 +22,14 @@ where exists (select 1 from cron.job where jobname = 'cars24-rss-ingest');
 select cron.unschedule('cars24-daily-brief')
 where exists (select 1 from cron.job where jobname = 'cars24-daily-brief');
 
+-- (Defensive: tear down the short-lived noon/evening jobs if they were ever
+-- scheduled. The product runs a single 06:05 IST brief.)
+select cron.unschedule('cars24-daily-brief-noon')
+where exists (select 1 from cron.job where jobname = 'cars24-daily-brief-noon');
+
+select cron.unschedule('cars24-daily-brief-evening')
+where exists (select 1 from cron.job where jobname = 'cars24-daily-brief-evening');
+
 select cron.unschedule('cars24-archive-clusters')
 where exists (select 1 from cron.job where jobname = 'cars24-archive-clusters');
 
@@ -48,8 +56,17 @@ select cron.schedule(
 );
 
 -- ---------------------------------------------------------------------------
--- 2. Daily brief generation — 06:05 IST = 00:35 UTC
+-- 2. Daily brief generation — once a day at 06:05 IST = 00:35 UTC
 -- ---------------------------------------------------------------------------
+-- The brief window for a given brief_date is anchored to that date's 06:05
+-- IST mark — `(brief_date − 1) 06:05 IST → brief_date 06:05 IST`. The window
+-- is fully determined by the date, not by wall-clock now, so manual re-runs
+-- (e.g. for a backfill) converge on the same answer rather than sliding the
+-- window forward.
+--
+-- A story published at 16:05 IST on May 7 lands in the May 8 brief (window
+-- May 7 06:05 → May 8 06:05). A story published at 14:00 IST on May 8 lands
+-- in the May 9 brief, surfacing the next morning.
 
 select cron.schedule(
   'cars24-daily-brief',
@@ -81,8 +98,17 @@ select cron.schedule(
 );
 
 -- ---------------------------------------------------------------------------
--- 4. Per-competitor weekly + quarterly summaries — daily at 06:15 IST = 00:45 UTC
+-- 4. Per-competitor summaries — daily at 06:15 IST = 00:45 UTC
 -- ---------------------------------------------------------------------------
+-- Cadence rules (enforced inside the Edge Function):
+--   - quarter scope:  re-derived from raw stories every day. The 90-day
+--                     window slides forward, so daily refresh is correct.
+--   - week scope:     covers a fixed Monday-Sunday window. The function
+--                     auto-skips weekly generation on non-Mondays so we
+--                     don't (a) re-LLM the same window and (b) produce a
+--                     sliding 7-day window that overlaps yesterday by 6.
+-- The cron still pokes the function daily because (a) quarterly always
+-- runs, and (b) on Mondays the weekly will fire automatically.
 
 select cron.schedule(
   'cars24-competitor-summary',

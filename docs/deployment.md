@@ -258,4 +258,5 @@ none in `pipeline_state='ingested'`. Check: `select pipeline_state, count(*) fro
 vectors; the schema expects 1536. If you change the embed model, update `vector(1536)` in `schema.sql`.
 
 **Empty hero on the website** — Either the brief hasn't been generated (run `generate-daily-brief` manually),
-or there are no MED/HIGH stories in any of the 24/48/72h windows. Check the `daily_briefs` row.
+or there are no MED/HIGH-with-implication stories in the 24h window. The window is strict; we don't widen.
+Check the `daily_briefs` row and the underlying `stories` table for the day.

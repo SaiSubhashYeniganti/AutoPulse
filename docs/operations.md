@@ -58,8 +58,10 @@ All times in UTC. IST = UTC+5:30.
 |---|---|---|
 | `cars24-rss-ingest` | `0 */2 * * *` (every 2h on the hour; 05:30 IST is the morning run) | Calls `run-pipeline` with `["ingest","classify","route","synthesize"]` |
 | `cars24-archive-clusters` | `30 22 * * *` (22:30 UTC = 04:00 IST next day) | Archives clusters older than 14 days |
-| `cars24-daily-brief` | `35 0 * * *` (00:35 UTC = 06:05 IST) | Calls `generate-daily-brief` after the 05:30 IST ingest has time to finish |
-| `cars24-competitor-summary` | `45 0 * * *` (00:45 UTC = 06:15 IST) | Calls `generate-competitor-summary` for all competitors + scopes on the same morning dataset |
+| `cars24-daily-brief` | `35 0 * * *` (00:35 UTC = 06:05 IST) | Seals that day's brief. The window is anchored to `brief_date`: `(brief_date − 1) 06:05 IST → brief_date 06:05 IST`. By the time this fires, the morning ingest has had ~30 min to run. |
+| `cars24-competitor-summary` | `45 0 * * *` (00:45 UTC = 06:15 IST) | Calls `generate-competitor-summary`. Quarterly always runs (90-day window slides daily). Weekly is gated inside the function — runs only on Mondays for the previous Mon-Sun window, no-ops other days. |
+
+**Why is the brief window anchored to `brief_date` instead of `now()`?** Earlier the window was computed as `now − 24h → now`. That worked for the single morning cron, but manual re-runs (e.g. backfills, retries) shifted the window by hours and silently dropped stories the original morning brief had included. With the anchored design, the window is fully determined by `brief_date`, so `generate-daily-brief` is idempotent — re-running converges on the same answer.
 
 Inspect:
 
@@ -171,7 +173,7 @@ for transparency in the UI footer.
 | `clusters` | ~150-200 | Some are single-article (cluster-of-one) |
 | `stories` | ~150-200 | One per cluster |
 | `daily_briefs` | 1+ | One row per `brief_date` |
-| `competitor_summaries` | 10 | 5 competitors × 2 scopes |
+| `competitor_summaries` | grows | 5 competitors × (1 fresh quarterly per day + 1 weekly per Monday). Quarterly rows accumulate as `period_end` advances; weekly rows accumulate one per Mon–Sun window. |
 
 ---
 
@@ -241,8 +243,9 @@ These are open and would be addressed if this became a real product.
    archived clusters.
 
 6. **Quarterly depth accumulates organically**
-   from live RSS. The competitor quarterly view shows an honest
-   "filling in" state until ~30+ days of history exist.
+   from live RSS. On day one the event ledger may be empty or sparse —
+   that's surfaced honestly ("No material events logged in the last 90
+   days") rather than padded with weak narrative.
 
 ---
 
@@ -268,8 +271,9 @@ Before showing the live site to a stakeholder:
       and competitor pulse expands cleanly.
 - [ ] Verify the `[COMPETITOR]` / `[MARKET]` / `[CARS24]` tags render.
 - [ ] Verify the "Yesterday's brief" accordion expands.
-- [ ] Verify at least one competitor row's quarterly view shows real
-      content (or the honest "filling in" message — both are fine).
+- [ ] Verify at least one competitor's quarter-in-review shows real
+      ledger content (or the honest empty-ledger message — both are
+      fine, depending on RSS history depth).
 - [ ] Check `pipeline_state` for any stages stuck in `error:` status.
 - [ ] Have a `cron.job_run_details` query ready for "show me the last
       cron run" questions.

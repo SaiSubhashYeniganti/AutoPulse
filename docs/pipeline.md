@@ -16,7 +16,7 @@ see [`data-model.md`](./data-model.md).
 | 2 | `classify-articles` | 392 | cron 2h | Per-article LLM classify (bucket + importance + entities + implication) |
 | 3 | `route-articles` | 398 | cron 2h | Embed + cluster (pgvector top-K + LLM judge) |
 | 4 | `synthesize-stories` | 437 | cron 2h | Per-cluster LLM synthesis → row in `stories` |
-| 5 | `generate-daily-brief` | 328 | cron daily 00:35 UTC | Rank, window-decide, cache `daily_briefs` row |
+| 5 | `generate-daily-brief` | 328 | cron daily 00:35 UTC | Rank, window-anchor, cache `daily_briefs` row |
 | 6 | `generate-competitor-summary` | 440 | cron daily 00:45 UTC | Per-competitor week + quarter themed rollups |
 | 7 | `run-pipeline` | 167 | cron 2h | Orchestrator that chains stages 1-4 |
 
@@ -50,8 +50,9 @@ every 2 hours).
 6. Inserts new article with `published_at` from feed (best effort
    parse), `fetched_at = now()`.
 7. RSS ingest is live/current only. The first ~30 days of history accumulate
-   organically from the live RSS feeds; the brief calls out a "filling in"
-   state on quarterly views until enough depth exists.
+   organically from the live RSS feeds. On day one a competitor's event
+   ledger may be sparse or empty; that's surfaced honestly (an empty ledger
+   says "no material events logged in the last 90 days") rather than padded.
 
 **Failure modes:**
 - 503 from a source → retried, then logged in `sources.last_status`,
@@ -195,25 +196,60 @@ clusters never mix competitors.
 
 ## 5. `generate-daily-brief`
 
-**Triggered by:** `pg_cron` daily at 00:35 UTC (06:05 IST), after the 05:30 IST ingest run has a short buffer to finish.
+**Triggered by:** `pg_cron` daily at 00:35 UTC (06:05 IST), after the 05:30
+IST ingest run has a short buffer to finish.
+
+**Window anchoring (the important bit).** Each `brief_date` row covers a fixed
+24h window:
+- **Lower bound** = `(brief_date − 1) 06:05 IST` (= 00:35 UTC the day before)
+- **Upper bound** = `brief_date 06:05 IST` (= 00:35 UTC, "the seal")
+
+Both bounds are **deterministic for that brief_date** — they do not depend
+on wall-clock now. So the May 8 brief always covers `May 7 06:05 IST → May 8
+06:05 IST`, regardless of when the function actually runs.
+
+When the function fires, it figures out which `brief_date` it's targeting:
+- Wall ≤ today's seal (00:35 UTC) → sealing today's brief.
+- Wall > today's seal → would target tomorrow's brief. With the regular
+  schedule this branch is only hit by manual re-runs / backfills — the cron
+  always fires before its own seal — so the production behavior is "morning
+  cron seals today's brief and we're done for the day."
+
+Re-running for an already-sealed brief_date is a safe no-op (the upper
+bound is already at the cap). The lower bound is always fixed, so reruns
+can only ADD stories, never drop one that previously qualified.
 
 **Reads:**
-- Market/competitor stories from the last 24/48/72h.
-- Cars24 stories from the last 14d.
-- All prior `daily_briefs.hero_stories` (to know what was previously shown).
+- Market/competitor stories in the anchored 24h window.
+- Cars24 stories from the last 14d (trailing from upper bound).
+- All prior `daily_briefs.hero_stories` and `hero_cars24` (to know what was previously shown).
 - All clusters of previously-shown stories (to detect new activity).
 
-**Logic — Hero (strict no-repeat):**
+**Logic — Hero (strict no-repeat, anchored 24h):**
 1. Load all hero story IDs that have appeared in any prior brief.
-2. Load stories from last 24h, ordered by `(importance DESC, published_at DESC)`.
+2. Load stories in the anchored window, ordered by `(importance DESC, published_at DESC)`.
 3. **Filter out any story whose ID appeared in a prior brief.**
-4. If there are zero *fresh-eligible* stories → widen to 48h, then
-   72h. If there is one eligible story in the normal 24h window, the
-   brief shows that one story and stops. The widening is based on eligible
-   hero stories, not raw story count.
-5. Select all HIGH stories and MED stories with a concrete Cars24 implication.
+4. Select all HIGH stories and MED stories with a concrete Cars24 implication.
    There is no upper cap; weak MED stories without an implication stay in the
    archive instead of padding the CEO brief.
+5. If the result is empty, the lane stays empty and the UI shows an honest
+   *"Nothing new in this window. Check back later."* The reader falls back to
+   the **Yesterday** or **Last 7 Days** segments inside the same Feed tab.
+
+**Why no 48h/72h widening?** Earlier versions widened the window to 48h and
+72h on quiet mornings. In practice the only stories the wider window could
+surface were stories from yesterday that didn't make yesterday's brief — a
+narrow recovery for borderline mis-classifications, which the reader would
+correctly read as *"this is yesterday's news."* Yesterday's actual hero is
+one click away in the Yesterday segment, so the widening was paying a UX
+cost for a marginal recall win. Removed.
+
+**Why anchored windows (not "last 24h from now")?** Using `now − 24h` meant
+that re-running the function at, say, 19:00 IST shifted the window forward
+by 13h vs. the morning cron — silently dropping stories the morning brief
+had included, and replacing them with stories that should belong to
+tomorrow's brief. With anchored windows each brief_date is an immutable,
+explainable slice of time; multiple runs converge on the same answer.
 
 **Logic — Weekly:**
 1. Market/competitor lane reads the last 7d.
@@ -249,9 +285,9 @@ clusters never mix competitors.
 {
   "brief_date": "2026-05-04",
   "hero_stories": [{"story_id": "...", "rank": 1}, ...],
-  "window_hours": 48,
-  "is_quiet_day": true,
-  "quiet_day_note": "Quiet last 24h — showing since Friday",
+  "window_hours": 24,
+  "is_quiet_day": false,
+  "quiet_day_note": null,
   "competitor_pulse": [...],
   "total_stories_in_window": 17,
   "ai_cost_usd": 0.43
@@ -265,35 +301,46 @@ clusters never mix competitors.
 
 ## 6. `generate-competitor-summary`
 
-**Triggered by:** `pg_cron` daily at 00:45 UTC (06:15 IST), using the same fresh morning dataset as the daily brief.
+**Triggered by:** `pg_cron` daily at 00:45 UTC (06:15 IST), using the same fresh morning dataset as the daily brief. Daily cadence is the *cron* cadence; the function then decides scope-by-scope whether to actually run (see Weekly cadence guard below).
 
-**Reads:**
-- `stories` filtered by `primary_competitor = <competitor>` (e.g.
-  `'Spinny'`). This is stricter than the legacy `entities` lookup and
-  guarantees competitor analysis does not mix companies.
+**Two scopes, two very different shapes:**
 
-**Logic per (competitor, scope) pair:**
+### Quarterly (`scope='quarter'`) — exhaustive event ledger
+Re-derived from raw stories every day. Output shape:
+```json
+{
+  "tldr": "<1-2 sentences>",
+  "events":  [{date, type, headline, story_id}, ...],
+  "patterns": [{title, description, story_ids}, ...],
+  "cars24_implications": ["<line>", ...]
+}
+```
 
-### Weekly (`scope='week'`)
-1. Load stories from last 7 days.
-2. Group themes via LLM (e.g. *Funding & investor activity*, *Product
-   moves*, *Leadership*) — per-cluster bullets, each linkable to
-   source articles.
-3. Compute `context_line` ("Funding driving 250% mention spike").
-4. Upsert into `competitor_summaries` keyed on `(competitor, scope,
-   period_end)`.
+**Reads:** stories from the last 90 days, queried *both* by `primary_competitor = X` AND by `entities @> ['X']` (the two result sets are unioned and deduped by id). The wider entity-based recall matters at the 90-day horizon because mis-classifications of `primary_competitor` add up — the LLM can drop noise in extraction far more easily than it can recover stories we never showed it.
 
-### Quarterly (`scope='quarter'`) — Day-One Depth strategy
-1. Try to load last 12 weekly summaries (a "rollup of rollups").
-2. **If fewer than 4 weekly summaries exist** → fall back to raw
-   90-day stories so the quarterly view shows whatever depth exists.
-3. LLM-synthesize themes from whichever input set we ended up with.
-4. `story_count` reflects underlying story count (not weekly count).
-5. Upsert into `competitor_summaries`.
+**Three LLM passes** (anti-pattern: don't ask one LLM call to be both exhaustive and writerly — split the responsibilities):
 
-**Why two paths?** On day one, we don't have 12 weeks of weekly
-rollups. The fallback to raw 90-day stories is the honest day-one
-strategy; as real weeks accumulate, the rollup path takes over.
+1. **Extract** (gpt-4o-mini, T=0.1) — Given the story list, output a structured ledger. Every material event becomes one row: `{date, type, headline, story_id}`. Type is from a fixed enum (`funding | acquisition | product | expansion | hire | departure | partnership | regulatory | layoff | pricing | other`). The prompt is explicit that this is an extraction task, not a synthesis task — be exhaustive, no abstracting, drop only duplicates.
+2. **Pattern-detect** (gpt-4o-mini, T=0.2) — Given the ledger, identify 0–4 narrative arcs that 2+ events trace. The prompt explicitly allows zero patterns. Skipped when there are <2 events.
+3. **TL;DR + implications** (gpt-4o, T=0.3) — Given the ledger and patterns, write the 1–2 line headline and 0–4 Cars24-specific "so what" lines.
+
+**Server-side validators** drop hallucinated story_ids (LLM occasionally invents UUIDs), enforce ≥2 supporting events for any pattern, and clamp implications to ≤4 entries.
+
+**Cost:** ~$0.02–0.05 per competitor per quarterly run (most of it pass 1).
+
+### Weekly (`scope='week'`) — themed digest, Monday-only
+Covers a fixed Monday→Sunday window — the *previous* completed week. Output shape unchanged from before: `{context_line, themes: [{title, bullets, story_ids}]}`.
+
+**Cadence guard:** the function runs the weekly only when `now()` is a Monday (UTC). On other days the weekly is a no-op (returns `status: "skipped"`). The cron still pokes the function every day because (a) the quarterly always runs and (b) on Mondays the weekly fires automatically. Override with `{"force": true}` for backfills.
+
+**Why Monday-only?** A daily-regenerated weekly produced a *sliding* 7-day window that overlapped yesterday's window by 6 days, re-LLM'ing essentially the same stories every morning and producing fresh wording — noise dressed up as freshness. A fixed Mon→Sun window with one canonical run gives stable, auditable history.
+
+**Reads:** stories with `primary_competitor = X` published in the previous Mon→Sun window. Stricter than the quarterly's entities-based query because the weekly is a clean digest, not a recall problem.
+
+### What we deliberately do NOT do
+
+- **No "rollup of rollups."** The quarterly never reads weekly summaries. Once a story is compressed into a weekly bullet, dates / names / amounts are lost; the quarterly LLM can't recover them. Weeklies are a leaf node — output only.
+- **No `themed_summary` shape on quarterly rows.** New quarterly rows write the `EventLedgerSummary` JSON shape into the same `themed_summary` column. The UI runtime-checks `Array.isArray(s.events)` and renders accordingly. Older themed-summary rows still render via a backwards-compat path.
 
 **Files:**
 - `supabase/functions/generate-competitor-summary/index.ts`

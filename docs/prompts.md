@@ -308,52 +308,179 @@ and close timestamp point to the same event.
 
 ---
 
-## 4. `generate-competitor-summary` — themed rollup
+## 4. `generate-competitor-summary` — weekly digest + quarterly event ledger
 
-**Model:** `gpt-4o`
+The weekly and quarterly are now two different products with two different prompt strategies. Don't conflate them.
 
-Generates the weekly + quarterly themed bullets shown in the
-expandable competitor row.
+---
 
-### Shape of the prompt
+### 4a. Weekly digest
 
-> For competitor `<name>` and these `<N>` stories from the last
-> `<week | quarter>`, group them into 2-4 themes (e.g. *Funding &
-> investor activity*, *Product moves*, *Leadership*). For each theme,
-> write 2-4 short bullets that synthesize the underlying stories.
-> Every bullet must reference its source story IDs so the UI can link
-> to the originals.
+**Model:** `gpt-4o`, T=0.2
+
+Covers ONE Monday→Sunday week. Runs only on Mondays for the previous
+completed week (the function cadence-guards itself; cron pokes it
+daily).
+
+**Prompt shape**
+
+> You produce a themed digest of one competitor's news for the Cars24
+> leadership team, covering ONE Monday-to-Sunday week.
 >
-> Also write a `context_line` for the sparkline strip (≤80 chars):
-> what changed this week vs the previous week. e.g. "Funding driving
-> 250% mention spike", "Quiet week — usual product chatter".
+> Group the supplied stories into 2-4 coherent THEMES. Each theme has:
+>   - A short title (3-6 words, e.g. "Funding & valuation", "City
+>     expansion", "Product launches")
+>   - 1-3 bullets summarizing what happened (Bloomberg-terse, max 25
+>     words each)
+>   - The story_ids that belong to it
+>
+> Plus a single context_line (max 18 words) capturing the dominant
+> story of the week.
+>
+> Anti-bloat rules:
+>   - Do not invent facts not in the supplied stories.
+>   - Do not include themes with only fluff. If the week was quiet,
+>     return one theme called "Routine" with one bullet.
+>   - Do not repeat the cars24_implication — already shown next to
+>     each story.
 
-### Output shape
+**Output**
 
 ```json
 {
-  "context_line": "Funding driving 250% mention spike",
-  "themed_summary": {
-    "themes": [
-      {
-        "title": "Funding & investor activity",
-        "bullets": [
-          {"text": "Spinny raised $283M Series F at $1.8B valuation",
-           "story_ids": ["uuid", "uuid"]}
-        ]
-      }
-    ],
-    "total_stories": 12
-  }
+  "context_line": "<one line>",
+  "themes": [
+    { "title": "<...>", "bullets": ["<...>"], "story_ids": ["<uuid>"] }
+  ]
 }
 ```
 
-### Day-one quarterly fallback
+---
 
-If <4 weekly summaries exist for a competitor, the function falls
-back to raw 90-day stories. This is documented
-in the prompt input so the model knows it's working with a deeper
-horizon than usual.
+### 4b. Quarterly event ledger — three passes
+
+The quarterly is **not** a synthesis task. It's an extraction task with
+a narrative layer on top. We deliberately split it into three LLM
+calls because asking one model to be both exhaustive *and* writerly
+produces neither.
+
+#### Pass 1 — Extract (gpt-4o-mini, T=0.1)
+
+Reads the raw 90-day story list. Outputs one row per material event.
+
+> A "material event" is something a Cars24 executive would want to
+> know happened. Examples: funding round, IPO filing, acquisition,
+> product launch, geographic expansion, senior hire, executive
+> departure, partnership, regulatory action, layoff, pricing change.
+>
+> NOT material: generic op-eds, "industry trends" pieces that mention
+> the company in passing, puff pieces, awards, rumor pieces with no
+> named source.
+>
+> For each material event, output:
+>   - date: YYYY-MM-DD
+>   - type: ONE of: funding | acquisition | product | expansion |
+>     hire | departure | partnership | regulatory | layoff | pricing
+>     | other
+>   - headline: max 22 words. Lead with the verb. Include named
+>     amounts, named cities, named people, named products.
+>   - story_id: the source story's id
+>
+> Critical rules:
+>   - Be EXHAUSTIVE. Every launch, every acquisition, every senior
+>     hire gets its own row. Do not group three product launches into
+>     one "active product cadence" row — that's wrong.
+>   - If two stories cover the same event, pick one canonical
+>     story_id and skip the other.
+>   - Do NOT invent facts.
+
+**Output**: `{ events: [{date, type, headline, story_id}, ...] }`
+
+**Server validators**: enum-check `type`, drop hallucinated `story_id`s
+that don't exist in the input set, sort by date desc.
+
+#### Pass 2 — Pattern-detect (gpt-4o-mini, T=0.2)
+
+Reads the structured ledger from pass 1. Identifies 0–4 narrative
+arcs across multiple events. Skipped when ledger has <2 events.
+
+> A pattern is a strategic thread that 2 or more events trace out.
+>
+> Strict rules:
+>   - A pattern needs at least 2 supporting events. Single events are
+>     NOT patterns; they belong to the ledger only.
+>   - Patterns must be supported by the ledger as given. Do not
+>     invent events.
+>   - If you don't see a clear pattern, return an empty patterns
+>     array. Empty is correct and expected. Do NOT pad.
+>   - At most 4 patterns per competitor.
+
+**Output**: `{ patterns: [{title, description, story_ids}, ...] }`
+
+**Server validators**: drop patterns with <2 supporting story_ids
+after id-validation, clamp to 4.
+
+#### Pass 3 — TL;DR + Cars24 implications (gpt-4o, T=0.3)
+
+Reads the ledger + patterns. Writes the executive headline and the
+Cars24-specific "so what."
+
+> Outputs:
+>   1. tldr (1-2 sentences, max 40 words): the headline of the
+>      quarter. What materially changed about this competitor that
+>      Cars24 leadership should know? Plain English, no hedging.
+>   2. cars24_implications (0-4 lines, max 22 words each): quarter-
+>      level "so what for Cars24" — concrete, actionable, never
+>      generic.
+>      ✓ "The financing push directly competes with Cars24 Financial
+>         Services — defend our auto-loan funnel in the next 2
+>         quarters."
+>      ✗ "Cars24 should monitor this development."
+>      ✗ "Could have implications for the industry."
+>      If there is no genuine Cars24 implication, return an empty
+>      array. Empty is correct.
+
+**Output**: `{ tldr: "...", cars24_implications: ["...", ...] }`
+
+#### Combined output stored in `competitor_summaries.themed_summary`
+
+```json
+{
+  "tldr": "...",
+  "events": [
+    {"date": "2026-04-12", "type": "acquisition",
+     "headline": "Acquired XYZ Auto-Finance for ₹400Cr...",
+     "story_id": "uuid"}
+  ],
+  "patterns": [
+    {"title": "Aggressive financing push",
+     "description": "Acquisition + 2 lending partnerships in 60 days...",
+     "story_ids": ["uuid", "uuid", "uuid"]}
+  ],
+  "cars24_implications": [
+    "Defend Cars24 Financial Services auto-loan funnel — Spinny is going captive."
+  ]
+}
+```
+
+---
+
+### Why no "rollup of rollups" anymore
+
+The previous design read the quarterly from the last 12 weekly
+summaries when ≥4 weeks of weeklies existed. We removed that path
+because:
+
+- Weeklies are lossy. A 25-word "City expansion" bullet drops the
+  date, the city name, the deal mechanics. The quarterly LLM could
+  never recover those details.
+- Output shrank visibly the day a competitor crossed the 4-weekly
+  threshold (raw → rollup transition), causing reader confusion.
+- One bad weekly run corrupted the quarterly for 12 weeks.
+
+The quarterly now reads raw stories every time. ~60 stories × 150
+tokens = 9K tokens of input — well within gpt-4o-mini's context, and
+~2¢ per pass-1 run.
 
 ---
 
