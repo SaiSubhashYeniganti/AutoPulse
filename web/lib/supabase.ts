@@ -14,18 +14,13 @@ if (!url || !publishableKey) {
   );
 }
 
-// IMPORTANT: opt every supabase call out of Next.js's data cache.
-// Without this, server components running on Vercel will serve stale rows
-// (the data cache memoizes fetch() by URL+headers across requests within a
-// build/region). `force-dynamic` on the page only forces re-rendering — it
-// does NOT bypass the inner fetch cache. Setting `cache: 'no-store'` on the
-// supabase client's fetch makes every query go to the database fresh.
-const noStoreFetch: typeof fetch = (input, init) =>
-  fetch(input, { ...init, cache: "no-store" });
-
 export const supabase = createClient(url, publishableKey, {
   auth: { persistSession: false },
-  global: { fetch: noStoreFetch },
+  global: {
+    // Vercel's production data cache can persist Supabase REST responses across
+    // requests. The app is a live brief, so reads must reflect the latest rows.
+    fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+  },
 });
 
 // ─── Types matching schema.sql ───────────────────────────────────────────────
