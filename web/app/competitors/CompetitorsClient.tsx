@@ -172,23 +172,27 @@ function CompetitorDetail({
         </CompetitorSection>
       )}
 
-      <CompetitorSection title="Archive (last 90 days)" count={archive.length}>
-        {archive.length === 0 ? (
+      {archive.length === 0 ? (
+        <CompetitorSection title="Archive (last 90 days)" count={0}>
           <EmptyHint message="No older stories to show." />
-        ) : (
-          <details className="border-t border-b border-apple-100 py-6 group">
-            <summary className="cursor-pointer text-[14px] font-semibold text-apple-blue hover:text-apple-blueHover transition-colors outline-none flex items-center gap-2">
-              <span className="chevron group-open:rotate-90">›</span>
-              Expand all {archive.length} stor{archive.length === 1 ? "y" : "ies"}
+        </CompetitorSection>
+      ) : (
+        <section className="mb-14">
+          <details className="group">
+            <summary className="flex items-baseline justify-between border-b border-apple-300 pb-3 mb-6 gap-4 cursor-pointer outline-none group-hover:border-apple-blue transition-colors list-none [&::-webkit-details-marker]:hidden">
+              <h2 className="font-display text-2xl font-bold text-apple-800 tracking-tight group-hover:text-apple-blue transition-colors flex items-center gap-2">
+                <span className="transform transition-transform group-open:rotate-90 inline-block font-sans text-[28px] leading-none mb-[2px]">›</span>
+                Archive (last 90 days) <span className="font-mono text-[14px] font-medium text-apple-400 ml-2">{archive.length}</span>
+              </h2>
             </summary>
-            <div className="mt-6 border-t border-apple-200 pt-6">
+            <div className="animate-fade-in-up">
               {archive.map((s) => (
                 <StoryRow key={s.id} story={{ ...s, story_id: s.id }} />
               ))}
             </div>
           </details>
-        )}
-      </CompetitorSection>
+        </section>
+      )}
 
       {weekly?.context_line && (
         <p className="mt-8 text-[15px] italic text-apple-500 border-t border-apple-300 pt-5 font-sans leading-relaxed">
@@ -274,9 +278,12 @@ function QuarterlyLedger({
     >
       {/* TL;DR */}
       {summary.tldr && (
-        <p className="text-[16px] leading-relaxed text-apple-800 font-sans mb-8 bg-apple-50 border-l-2 border-apple-blue px-5 py-4 rounded-r">
-          {summary.tldr}
-        </p>
+        <div className="mb-8 bg-apple-50 border-l-2 border-apple-blue px-5 py-4 rounded-r">
+          <div className="text-[12px] font-bold text-apple-400 uppercase tracking-widest mb-1.5">Summary</div>
+          <p className="text-[16px] leading-relaxed text-apple-800 font-sans">
+            {summary.tldr}
+          </p>
+        </div>
       )}
 
       {/* Event ledger — exhaustive, grouped by type */}
@@ -285,62 +292,113 @@ function QuarterlyLedger({
       ) : (
         <div>
           {orderedGroups.map((group, i) => (
-            <div key={group} className="py-6 border-b border-apple-100 last:border-b-0 animate-fade-in-up" style={{ animationDelay: `${i * 60}ms`, animationFillMode: 'both' }}>
-              <h3 className="font-display text-[18px] font-semibold text-apple-800 tracking-tight capitalize">
-                {group}
-              </h3>
-              <ul className="mt-4 space-y-3">
-                {grouped[group].map((e, j) => (
-                  <EventRow
-                    key={`${e.story_id}-${j}`}
-                    event={e}
-                    link={storyLinks[e.story_id]}
-                  />
-                ))}
-              </ul>
-            </div>
+            <EventGroup
+              key={group}
+              group={group}
+              events={grouped[group]}
+              storyLinks={storyLinks}
+              i={i}
+            />
           ))}
         </div>
       )}
 
       {/* Patterns — only if any were detected */}
       {summary.patterns.length > 0 && (
-        <div className="mt-8 pt-8 border-t border-apple-300">
-          <h3 className="font-display text-[18px] font-semibold text-apple-800 tracking-tight mb-6">
+        <details className="mt-8 pt-8 border-t border-apple-300 group">
+          <summary className="cursor-pointer font-display text-[18px] font-semibold text-apple-800 hover:text-apple-blue transition-colors tracking-tight flex items-center gap-2.5 outline-none list-none [&::-webkit-details-marker]:hidden">
+            <span className="transform transition-transform group-open:rotate-90 inline-block font-sans text-[22px] leading-none mb-[2px] text-apple-400">›</span>
+            <svg className="w-[18px] h-[18px] text-apple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <rect x="4" y="4" width="6" height="6" rx="1" />
+              <rect x="14" y="4" width="6" height="6" rx="1" />
+              <rect x="4" y="14" width="6" height="6" rx="1" />
+              <circle cx="17" cy="17" r="3" />
+            </svg>
             Patterns worth flagging
-          </h3>
-          <ul className="space-y-6">
-            {summary.patterns.map((p, i) => (
-              <PatternRow
-                key={i}
-                pattern={p}
-                storyLinks={storyLinks}
-              />
-            ))}
-          </ul>
-        </div>
+          </summary>
+          <div className="mt-6 animate-fade-in-up pl-7">
+            <ul className="space-y-6">
+              {summary.patterns.map((p, i) => (
+                <PatternRow
+                  key={i}
+                  pattern={p}
+                  storyLinks={storyLinks}
+                />
+              ))}
+            </ul>
+          </div>
+        </details>
       )}
 
       {/* Cars24 implications */}
       {!isCars24 && summary.cars24_implications.length > 0 && (
-        <div className="mt-8 pt-8 border-t border-apple-300">
-          <h3 className="font-display text-[18px] font-semibold text-apple-800 tracking-tight mb-6">
+        <details className="mt-8 pt-8 border-t border-apple-300 group">
+          <summary className="cursor-pointer font-display text-[18px] font-semibold text-apple-800 hover:text-apple-blue transition-colors tracking-tight flex items-center gap-2.5 outline-none list-none [&::-webkit-details-marker]:hidden">
+            <span className="transform transition-transform group-open:rotate-90 inline-block font-sans text-[22px] leading-none mb-[2px] text-apple-400">›</span>
+            <svg className="w-[18px] h-[18px] text-apple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+            </svg>
             So what for Cars24
-          </h3>
-          <ul className="space-y-3">
-            {summary.cars24_implications.map((line, i) => (
-              <li
-                key={i}
-                className="text-[15px] leading-relaxed text-apple-700 font-sans flex items-start gap-3"
-              >
-                <span className="text-apple-300 mt-1 leading-none text-xl shrink-0">•</span>
-                <span>{line}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+          </summary>
+          <div className="mt-6 animate-fade-in-up pl-7">
+            <ul className="space-y-3">
+              {summary.cars24_implications.map((line, i) => (
+                <li
+                  key={i}
+                  className="text-[15px] leading-relaxed text-apple-700 font-sans flex items-start gap-3"
+                >
+                  <span className="text-apple-300 mt-1 leading-none text-xl shrink-0">•</span>
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </details>
       )}
     </CompetitorSection>
+  );
+}
+
+function EventGroup({
+  group,
+  events,
+  storyLinks,
+  i
+}: {
+  group: string;
+  events: LedgerEvent[];
+  storyLinks: Record<string, StoryLink>;
+  i: number;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const showCount = expanded ? events.length : 3;
+  const visibleEvents = events.slice(0, showCount);
+  const hasMore = events.length > 3;
+
+  return (
+    <div className="py-6 border-b border-apple-100 last:border-b-0 animate-fade-in-up" style={{ animationDelay: `${i * 60}ms`, animationFillMode: 'both' }}>
+      <h3 className="font-display text-[18px] font-semibold text-apple-800 tracking-tight capitalize mb-5">
+        {group}
+      </h3>
+      <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
+        {visibleEvents.map((e, j) => (
+          <EventRow
+            key={`${e.story_id}-${j}`}
+            event={e}
+            link={storyLinks[e.story_id]}
+          />
+        ))}
+      </ul>
+      {hasMore && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="mt-6 text-[13px] font-semibold text-apple-blue hover:text-apple-blueHover transition-colors outline-none flex items-center gap-1.5"
+        >
+          {expanded ? "Show less" : `+ View ${events.length - 3} more`}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -352,25 +410,37 @@ function EventRow({
   link: StoryLink | undefined;
 }) {
   const date = formatEventDate(event.date);
-  return (
-    <li className="text-[15px] leading-relaxed text-apple-700 font-sans flex items-start gap-3">
-      <span className="text-apple-300 mt-1 leading-none text-xl shrink-0">•</span>
-      <div>
-        <span className="font-medium text-apple-800 mr-2">
-          {date}
-        </span>
+
+  const content = (
+    <div className="flex items-start gap-4 group">
+      <div className="text-apple-400 font-medium text-[14px] w-[45px] shrink-0 whitespace-nowrap pt-[1px]">
+        {date}
+      </div>
+      <div className="text-[14px] leading-[1.45] text-apple-700 group-hover:text-black transition-colors">
         {event.headline}
         {link?.url && (
-          <a
-            href={link.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-apple-blue hover:text-apple-blueHover hover:underline transition-colors ml-2"
-          >
-            ↗ {link.source ?? "source"}
-          </a>
+          <span className="text-apple-300 group-hover:text-apple-500 transition-colors ml-1.5 whitespace-nowrap">
+            ↗
+          </span>
         )}
       </div>
+    </div>
+  );
+
+  return (
+    <li>
+      {link?.url ? (
+        <a
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block outline-none"
+        >
+          {content}
+        </a>
+      ) : (
+        content
+      )}
     </li>
   );
 }
@@ -382,6 +452,8 @@ function PatternRow({
   pattern: LedgerPattern;
   storyLinks: Record<string, StoryLink>;
 }) {
+  const [showSources, setShowSources] = useState(false);
+
   return (
     <li className="border-l-2 border-apple-300 pl-4 py-1">
       <h4 className="font-display text-[16px] font-semibold text-apple-800 tracking-tight">
@@ -391,26 +463,39 @@ function PatternRow({
         {pattern.description}
       </p>
       {pattern.story_ids.length > 0 && (
-        <p className="mt-2 text-[13px] text-apple-500 font-sans flex flex-wrap gap-x-2 gap-y-1">
-          <span className="text-apple-400 font-medium">Supporting events:</span>
-          {pattern.story_ids.map((id, i) => {
-            const link = storyLinks[id];
-            if (!link) return null;
-            return link.url ? (
-              <a
-                key={id}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-apple-blue hover:text-apple-blueHover hover:underline transition-colors"
-              >
-                ↗ {link.source ?? "source"}
-              </a>
-            ) : (
-              <span key={id}>{link.title.slice(0, 40)}</span>
-            );
-          })}
-        </p>
+        <div className="mt-2.5">
+          <button
+            onClick={() => setShowSources(!showSources)}
+            className="text-[13px] font-medium text-apple-400 hover:text-apple-600 transition-colors outline-none flex items-center gap-1.5"
+          >
+            <span className={`transform transition-transform ${showSources ? "rotate-90" : ""}`}>›</span>
+            {showSources ? "Hide sources" : "View sources"}
+          </button>
+
+          {showSources && (
+            <p className="mt-3 text-[13px] text-apple-500 font-sans flex flex-wrap items-center gap-x-3 gap-y-2 animate-fade-in-up">
+              {pattern.story_ids.map((id, i) => {
+                const link = storyLinks[id];
+                if (!link) return null;
+                return link.url ? (
+                  <a
+                    key={id}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-center text-apple-400 hover:text-apple-700 transition-colors bg-apple-50 px-2 py-1 rounded"
+                    title={link.title}
+                  >
+                    <span className="group-hover:underline">{link.source ?? "source"}</span>
+                    <span className="ml-1 text-[10px] opacity-50 group-hover:opacity-100">↗</span>
+                  </a>
+                ) : (
+                  <span key={id} className="text-apple-400 bg-apple-50 px-2 py-1 rounded">{link.title.slice(0, 40)}</span>
+                );
+              })}
+            </p>
+          )}
+        </div>
       )}
     </li>
   );
